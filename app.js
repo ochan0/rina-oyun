@@ -3,12 +3,19 @@
 const config = {
     minPlayers: 5,
     maxPlayers: 15,
-    nightTime: 30,
-    discussionTime: 120,
-    votingTime: 60,
+    nightTime: 20,
+    discussionTime: 60,
+    votingTime: 30,
     lobbyRefreshInterval: 3000,
     passwordAttempts: 3,
-    passwordLockoutTime: 60000
+    passwordLockoutTime: 60000,
+    village: {
+        width: 1200,
+        height: 600,
+        houseCount: 8,
+        characterSize: 40,
+        movementSpeed: 2
+    }
 };
 
 let gameState = {
@@ -746,9 +753,277 @@ function assignRoles(players) {
     return roles;
 }
 
+// Village Rendering System
+let villageState = {
+    canvas: null,
+    ctx: null,
+    houses: [],
+    characters: [],
+    grass: [],
+    trees: []
+};
+
+function initializeVillage() {
+    villageState.canvas = document.getElementById('village-canvas');
+    villageState.ctx = villageState.canvas.getContext('2d');
+    
+    // Generate houses in a circle pattern
+    const centerX = config.village.width / 2;
+    const centerY = config.village.height / 2;
+    const radius = 200;
+    
+    villageState.houses = [];
+    for (let i = 0; i < config.village.houseCount; i++) {
+        const angle = (Math.PI * 2 * i) / config.village.houseCount;
+        villageState.houses.push({
+            x: centerX + Math.cos(angle) * radius - 40,
+            y: centerY + Math.sin(angle) * radius - 40,
+            width: 80,
+            height: 80,
+            color: `hsl(${Math.random() * 60 + 20}, 60%, 65%)`,
+            owner: null
+        });
+    }
+    
+    // Generate grass patches
+    villageState.grass = [];
+    for (let i = 0; i < 30; i++) {
+        villageState.grass.push({
+            x: Math.random() * config.village.width,
+            y: Math.random() * config.village.height,
+            size: Math.random() * 10 + 5
+        });
+    }
+    
+    // Generate trees
+    villageState.trees = [];
+    for (let i = 0; i < 15; i++) {
+        const x = Math.random() * config.village.width;
+        const y = Math.random() * config.village.height;
+        // Don't place trees too close to center
+        const distToCenter = Math.hypot(x - centerX, y - centerY);
+        if (distToCenter > 100 && distToCenter < 280) {
+            villageState.trees.push({
+                x: x,
+                y: y,
+                size: Math.random() * 20 + 30
+            });
+        }
+    }
+    
+    // Initialize characters from players
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (lobbyData && lobbyData.game) {
+        villageState.characters = lobbyData.game.players.map((player, index) => {
+            const house = villageState.houses[index % villageState.houses.length];
+            house.owner = player.name;
+            
+            return {
+                name: player.name,
+                x: house.x + 40,
+                y: house.y + 40,
+                targetX: house.x + 40,
+                targetY: house.y + 40,
+                character: player.character || generateRandomCharacter(),
+                alive: player.alive,
+                isMoving: false,
+                house: index % villageState.houses.length
+            };
+        });
+    }
+    
+    // Start render loop
+    renderVillage();
+}
+
+function renderVillage() {
+    if (!villageState.ctx) return;
+    
+    const ctx = villageState.ctx;
+    const width = config.village.width;
+    const height = config.village.height;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw background gradient (sky to grass)
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(0.5, '#98D8C8');
+    gradient.addColorStop(1, '#90EE90');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Draw grass patches
+    villageState.grass.forEach(grass => {
+        ctx.fillStyle = 'rgba(34, 139, 34, 0.3)';
+        ctx.beginPath();
+        ctx.arc(grass.x, grass.y, grass.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
+    // Draw trees (behind houses)
+    villageState.trees.forEach(tree => {
+        // Tree trunk
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(tree.x - 5, tree.y, 10, tree.size / 2);
+        
+        // Tree foliage
+        ctx.fillStyle = '#228B22';
+        ctx.beginPath();
+        ctx.arc(tree.x, tree.y - tree.size / 4, tree.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
+    // Draw village center (meeting point)
+    const centerX = width / 2;
+    const centerY = height / 2;
+    ctx.fillStyle = 'rgba(139, 69, 19, 0.6)';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Draw houses
+    villageState.houses.forEach((house, index) => {
+        // House body
+        ctx.fillStyle = house.color;
+        ctx.fillRect(house.x, house.y + 20, house.width, house.height - 20);
+        ctx.strokeStyle = '#654321';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(house.x, house.y + 20, house.width, house.height - 20);
+        
+        // Roof
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.moveTo(house.x - 5, house.y + 20);
+        ctx.lineTo(house.x + house.width / 2, house.y);
+        ctx.lineTo(house.x + house.width + 5, house.y + 20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Door
+        ctx.fillStyle = '#654321';
+        ctx.fillRect(house.x + house.width / 2 - 10, house.y + 60, 20, 30);
+        
+        // Window
+        ctx.fillStyle = '#ADD8E6';
+        ctx.fillRect(house.x + 15, house.y + 40, 20, 20);
+        ctx.strokeRect(house.x + 15, house.y + 40, 20, 20);
+        
+        // Owner name
+        if (house.owner) {
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 12px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(house.owner, house.x + house.width / 2, house.y + house.height + 15);
+        }
+    });
+    
+    // Draw characters
+    villageState.characters.forEach(char => {
+        if (!char.alive) return;
+        
+        // Update position if moving
+        if (char.isMoving) {
+            const dx = char.targetX - char.x;
+            const dy = char.targetY - char.y;
+            const dist = Math.hypot(dx, dy);
+            
+            if (dist < config.village.movementSpeed) {
+                char.x = char.targetX;
+                char.y = char.targetY;
+                char.isMoving = false;
+            } else {
+                char.x += (dx / dist) * config.village.movementSpeed;
+                char.y += (dy / dist) * config.village.movementSpeed;
+            }
+        }
+        
+        // Draw character (simplified version)
+        const size = config.village.characterSize;
+        const x = char.x - size / 2;
+        const y = char.y - size;
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(char.x, char.y, size / 2, size / 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Body
+        const isMale = char.character.gender === 'male';
+        ctx.fillStyle = isMale ? '#4A90E2' : '#E24A90';
+        ctx.fillRect(x + size * 0.2, y + size * 0.4, size * 0.6, size * 0.6);
+        
+        // Head
+        ctx.fillStyle = '#FFD4A3';
+        ctx.beginPath();
+        ctx.arc(char.x, y + size * 0.3, size * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Hat
+        if (char.character.hat && char.character.hat !== 'none') {
+            ctx.fillStyle = getHatColor(char.character.hat);
+            if (char.character.hat === 'beanie') {
+                ctx.fillRect(x + size * 0.3, y + size * 0.05, size * 0.4, size * 0.15);
+            } else if (char.character.hat === 'cap') {
+                ctx.fillRect(x + size * 0.25, y + size * 0.08, size * 0.5, size * 0.12);
+                ctx.fillRect(x + size * 0.5, y + size * 0.08, size * 0.3, size * 0.05);
+            }
+        }
+        
+        // Name label
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 11px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(char.name, char.x, y - 5);
+    });
+    
+    // Continue animation
+    requestAnimationFrame(renderVillage);
+}
+
+function moveCharacterToHouse(characterName, houseIndex) {
+    const char = villageState.characters.find(c => c.name === characterName);
+    const house = villageState.houses[houseIndex];
+    
+    if (char && house) {
+        char.targetX = house.x + 40;
+        char.targetY = house.y + 40;
+        char.isMoving = true;
+    }
+}
+
+function moveCharacterToCenter(characterName) {
+    const char = villageState.characters.find(c => c.name === characterName);
+    
+    if (char) {
+        char.targetX = config.village.width / 2;
+        char.targetY = config.village.height / 2;
+        char.isMoving = true;
+    }
+}
+
+function updateCharacterStates() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    villageState.characters.forEach(char => {
+        const player = lobbyData.game.players.find(p => p.name === char.name);
+        if (player) {
+            char.alive = player.alive;
+        }
+    });
+}
+
 function initializeGame() {
     showScreen('game-screen');
     updateGameDisplay();
+    initializeVillage();
     
     if (gameTimer) clearInterval(gameTimer);
     gameTimer = setInterval(() => {
@@ -822,12 +1097,36 @@ function updatePhaseDisplay() {
     if (game.phase === 'night') {
         document.getElementById('night-content').style.display = 'block';
         updateNightTargets();
+        
+        // Move all characters to their houses
+        villageState.characters.forEach(char => {
+            if (char.alive) {
+                moveCharacterToHouse(char.name, char.house);
+            }
+        });
     } else if (game.phase === 'discussion') {
         document.getElementById('discussion-content').style.display = 'block';
+        
+        // Move all alive characters to center for discussion
+        villageState.characters.forEach(char => {
+            if (char.alive) {
+                moveCharacterToCenter(char.name);
+            }
+        });
     } else if (game.phase === 'voting') {
         document.getElementById('voting-content').style.display = 'block';
         updateVotingDisplay();
+        
+        // Keep characters at center for voting
+        villageState.characters.forEach(char => {
+            if (char.alive) {
+                moveCharacterToCenter(char.name);
+            }
+        });
     }
+    
+    // Update character alive states
+    updateCharacterStates();
 }
 
 function updateNightTargets() {
