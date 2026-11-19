@@ -218,7 +218,22 @@
 
             <!-- 2D Köy Görünümü -->
             <div class="village-view">
-                <canvas id="village-canvas" width="1200" height="600"></canvas>
+                <div class="village-sky">
+                    <div class="cloud cloud-1"></div>
+                    <div class="cloud cloud-2"></div>
+                    <div class="cloud cloud-3"></div>
+                    <div class="sun"></div>
+                </div>
+                <div class="village-ground">
+                    <div class="village-center">
+                        <div class="grass-patch grass-1"></div>
+                        <div class="grass-patch grass-2"></div>
+                        <div class="grass-patch grass-3"></div>
+                        <div class="grass-patch grass-4"></div>
+                        <div id="characters-container" class="characters-container"></div>
+                    </div>
+                    <div class="houses-container" id="houses-container"></div>
+                </div>
             </div>
 
             <div id="game-content" class="content">
@@ -232,10 +247,12 @@
                 <div id="discussion-content" style="display: none;">
                     <h3>Tartışma</h3>
                     <p>Şüphelilerinizi tartışın ve ipuçları arayın.</p>
+                    <div class="ready-status" id="ready-status"></div>
                     <div id="chat-messages" class="chat-box"></div>
                     <div class="chat-input-container">
                         <input type="text" id="chat-input" placeholder="Mesajınızı yazın..." maxlength="200">
                         <button class="btn btn-primary" onclick="sendChatMessage()">Gönder</button>
+                        <button class="btn btn-success" id="ready-button" onclick="toggleDiscussionReady()">Hazırım</button>
                     </div>
                 </div>
 

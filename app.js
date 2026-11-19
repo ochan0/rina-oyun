@@ -755,60 +755,55 @@ function assignRoles(players) {
 
 // Village Rendering System
 let villageState = {
-    canvas: null,
-    ctx: null,
     houses: [],
-    characters: [],
-    grass: [],
-    trees: []
+    characters: []
 };
 
 function initializeVillage() {
-    villageState.canvas = document.getElementById('village-canvas');
-    villageState.ctx = villageState.canvas.getContext('2d');
+    const housesContainer = document.getElementById('houses-container');
+    const charactersContainer = document.getElementById('characters-container');
+    
+    if (!housesContainer || !charactersContainer) return;
+    
+    // Clear containers
+    housesContainer.innerHTML = '';
+    charactersContainer.innerHTML = '';
     
     // Generate houses in a circle pattern
-    const centerX = config.village.width / 2;
-    const centerY = config.village.height / 2;
-    const radius = 200;
+    const containerWidth = 1200;
+    const containerHeight = 600;
+    const centerX = containerWidth / 2;
+    const centerY = containerHeight / 2;
+    const radius = 220;
     
     villageState.houses = [];
     for (let i = 0; i < config.village.houseCount; i++) {
-        const angle = (Math.PI * 2 * i) / config.village.houseCount;
+        const angle = (Math.PI * 2 * i) / config.village.houseCount - Math.PI / 2;
+        const x = centerX + Math.cos(angle) * radius - 40;
+        const y = centerY + Math.sin(angle) * radius + 40;
+        
+        const house = document.createElement('div');
+        house.className = 'house';
+        house.style.left = x + 'px';
+        house.style.top = y + 'px';
+        
+        house.innerHTML = `
+            <div class="house-roof"></div>
+            <div class="house-body">
+                <div class="house-window"></div>
+                <div class="house-window"></div>
+                <div class="house-door"></div>
+            </div>
+        `;
+        
+        housesContainer.appendChild(house);
+        
         villageState.houses.push({
-            x: centerX + Math.cos(angle) * radius - 40,
-            y: centerY + Math.sin(angle) * radius - 40,
-            width: 80,
-            height: 80,
-            color: `hsl(${Math.random() * 60 + 20}, 60%, 65%)`,
+            x: x,
+            y: y,
+            element: house,
             owner: null
         });
-    }
-    
-    // Generate grass patches
-    villageState.grass = [];
-    for (let i = 0; i < 30; i++) {
-        villageState.grass.push({
-            x: Math.random() * config.village.width,
-            y: Math.random() * config.village.height,
-            size: Math.random() * 10 + 5
-        });
-    }
-    
-    // Generate trees
-    villageState.trees = [];
-    for (let i = 0; i < 15; i++) {
-        const x = Math.random() * config.village.width;
-        const y = Math.random() * config.village.height;
-        // Don't place trees too close to center
-        const distToCenter = Math.hypot(x - centerX, y - centerY);
-        if (distToCenter > 100 && distToCenter < 280) {
-            villageState.trees.push({
-                x: x,
-                y: y,
-                size: Math.random() * 20 + 30
-            });
-        }
     }
     
     // Initialize characters from players
@@ -818,194 +813,110 @@ function initializeVillage() {
             const house = villageState.houses[index % villageState.houses.length];
             house.owner = player.name;
             
+            const charDiv = document.createElement('div');
+            charDiv.className = 'character';
+            charDiv.dataset.name = player.name;
+            
+            // Create canvas for character avatar
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw character on canvas
+            const character = player.character || generateRandomCharacter();
+            drawCharacterOnCanvas(ctx, character);
+            
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'character-name';
+            nameSpan.textContent = player.name;
+            
+            charDiv.appendChild(canvas);
+            charDiv.appendChild(nameSpan);
+            charactersContainer.appendChild(charDiv);
+            
             return {
                 name: player.name,
-                x: house.x + 40,
-                y: house.y + 40,
-                targetX: house.x + 40,
-                targetY: house.y + 40,
-                character: player.character || generateRandomCharacter(),
+                element: charDiv,
+                character: character,
                 alive: player.alive,
-                isMoving: false,
                 house: index % villageState.houses.length
             };
         });
     }
+}
+
+function drawCharacterOnCanvas(ctx, character) {
+    ctx.clearRect(0, 0, 100, 100);
     
-    // Start render loop
-    renderVillage();
+    // Skin color
+    const skinColor = character.gender === 'male' ? '#D2A679' : '#E8B999';
+    
+    // Head
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(50, 40, 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Body (top)
+    ctx.fillStyle = getClothingColor(character.top);
+    ctx.fillRect(35, 55, 30, 25);
+    
+    // Body (bottom)
+    ctx.fillStyle = getClothingColor(character.bottom);
+    ctx.fillRect(37, 77, 26, 20);
+    
+    // Hat
+    if (character.hat !== 'none') {
+        ctx.fillStyle = getHatColor(character.hat);
+        if (character.hat === 'cap') {
+            ctx.fillRect(35, 18, 30, 8);
+            ctx.fillRect(40, 14, 20, 4);
+        } else if (character.hat === 'beanie') {
+            ctx.beginPath();
+            ctx.arc(50, 25, 22, Math.PI, 0);
+            ctx.fill();
+        }
+    }
+    
+    // Eyes
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(43, 38, 2, 0, Math.PI * 2);
+    ctx.arc(57, 38, 2, 0, Math.PI * 2);
+    ctx.fill();
 }
 
 function renderVillage() {
-    if (!villageState.ctx) return;
-    
-    const ctx = villageState.ctx;
-    const width = config.village.width;
-    const height = config.village.height;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
-    
-    // Draw background gradient (sky to grass)
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#87CEEB');
-    gradient.addColorStop(0.5, '#98D8C8');
-    gradient.addColorStop(1, '#90EE90');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-    
-    // Draw grass patches
-    villageState.grass.forEach(grass => {
-        ctx.fillStyle = 'rgba(34, 139, 34, 0.3)';
-        ctx.beginPath();
-        ctx.arc(grass.x, grass.y, grass.size, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    
-    // Draw trees (behind houses)
-    villageState.trees.forEach(tree => {
-        // Tree trunk
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(tree.x - 5, tree.y, 10, tree.size / 2);
-        
-        // Tree foliage
-        ctx.fillStyle = '#228B22';
-        ctx.beginPath();
-        ctx.arc(tree.x, tree.y - tree.size / 4, tree.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    
-    // Draw village center (meeting point)
-    const centerX = width / 2;
-    const centerY = height / 2;
-    ctx.fillStyle = 'rgba(139, 69, 19, 0.6)';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    
-    // Draw houses
-    villageState.houses.forEach((house, index) => {
-        // House body
-        ctx.fillStyle = house.color;
-        ctx.fillRect(house.x, house.y + 20, house.width, house.height - 20);
-        ctx.strokeStyle = '#654321';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(house.x, house.y + 20, house.width, house.height - 20);
-        
-        // Roof
-        ctx.fillStyle = '#8B4513';
-        ctx.beginPath();
-        ctx.moveTo(house.x - 5, house.y + 20);
-        ctx.lineTo(house.x + house.width / 2, house.y);
-        ctx.lineTo(house.x + house.width + 5, house.y + 20);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        
-        // Door
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(house.x + house.width / 2 - 10, house.y + 60, 20, 30);
-        
-        // Window
-        ctx.fillStyle = '#ADD8E6';
-        ctx.fillRect(house.x + 15, house.y + 40, 20, 20);
-        ctx.strokeRect(house.x + 15, house.y + 40, 20, 20);
-        
-        // Owner name
-        if (house.owner) {
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 12px Inter';
-            ctx.textAlign = 'center';
-            ctx.fillText(house.owner, house.x + house.width / 2, house.y + house.height + 15);
-        }
-    });
-    
-    // Draw characters
-    villageState.characters.forEach(char => {
-        if (!char.alive) return;
-        
-        // Update position if moving
-        if (char.isMoving) {
-            const dx = char.targetX - char.x;
-            const dy = char.targetY - char.y;
-            const dist = Math.hypot(dx, dy);
-            
-            if (dist < config.village.movementSpeed) {
-                char.x = char.targetX;
-                char.y = char.targetY;
-                char.isMoving = false;
-            } else {
-                char.x += (dx / dist) * config.village.movementSpeed;
-                char.y += (dy / dist) * config.village.movementSpeed;
-            }
-        }
-        
-        // Draw character (simplified version)
-        const size = config.village.characterSize;
-        const x = char.x - size / 2;
-        const y = char.y - size;
-        
-        // Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.beginPath();
-        ctx.ellipse(char.x, char.y, size / 2, size / 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Body
-        const isMale = char.character.gender === 'male';
-        ctx.fillStyle = isMale ? '#4A90E2' : '#E24A90';
-        ctx.fillRect(x + size * 0.2, y + size * 0.4, size * 0.6, size * 0.6);
-        
-        // Head
-        ctx.fillStyle = '#FFD4A3';
-        ctx.beginPath();
-        ctx.arc(char.x, y + size * 0.3, size * 0.25, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Hat
-        if (char.character.hat && char.character.hat !== 'none') {
-            ctx.fillStyle = getHatColor(char.character.hat);
-            if (char.character.hat === 'beanie') {
-                ctx.fillRect(x + size * 0.3, y + size * 0.05, size * 0.4, size * 0.15);
-            } else if (char.character.hat === 'cap') {
-                ctx.fillRect(x + size * 0.25, y + size * 0.08, size * 0.5, size * 0.12);
-                ctx.fillRect(x + size * 0.5, y + size * 0.08, size * 0.3, size * 0.05);
-            }
-        }
-        
-        // Name label
-        ctx.fillStyle = '#000';
-        ctx.font = 'bold 11px Inter';
-        ctx.textAlign = 'center';
-        ctx.fillText(char.name, char.x, y - 5);
-    });
-    
-    // Continue animation
-    requestAnimationFrame(renderVillage);
+    // No longer needed - using HTML/CSS instead
 }
 
 function moveCharacterToHouse(characterName, houseIndex) {
-    const char = villageState.characters.find(c => c.name === characterName);
-    const house = villageState.houses[houseIndex];
+    const character = villageState.characters.find(c => c.name === characterName);
+    if (!character || !character.element) return;
     
-    if (char && house) {
-        char.targetX = house.x + 40;
-        char.targetY = house.y + 40;
-        char.isMoving = true;
-    }
+    const house = villageState.houses[houseIndex];
+    character.element.style.left = (house.x + 15) + 'px';
+    character.element.style.top = (house.y + 10) + 'px';
 }
 
 function moveCharacterToCenter(characterName) {
-    const char = villageState.characters.find(c => c.name === characterName);
+    const character = villageState.characters.find(c => c.name === characterName);
+    if (!character || !character.element) return;
     
-    if (char) {
-        char.targetX = config.village.width / 2;
-        char.targetY = config.village.height / 2;
-        char.isMoving = true;
-    }
+    // Position characters in a circle at the center
+    const centerX = 150;
+    const centerY = 150;
+    const index = villageState.characters.filter(c => c.alive).indexOf(character);
+    const total = villageState.characters.filter(c => c.alive).length;
+    const angle = (Math.PI * 2 * index) / total;
+    const radius = 50;
+    
+    const x = centerX + Math.cos(angle) * radius - 25;
+    const y = centerY + Math.sin(angle) * radius - 25;
+    
+    character.element.style.left = x + 'px';
+    character.element.style.top = y + 'px';
 }
 
 function updateCharacterStates() {
@@ -1016,6 +927,13 @@ function updateCharacterStates() {
         const player = lobbyData.game.players.find(p => p.name === char.name);
         if (player) {
             char.alive = player.alive;
+            if (char.element) {
+                if (char.alive) {
+                    char.element.classList.remove('dead');
+                } else {
+                    char.element.classList.add('dead');
+                }
+            }
         }
     });
 }
@@ -1155,6 +1073,69 @@ function setupChatInput() {
     }
 }
 
+function toggleDiscussionReady() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const player = lobbyData.game.players.find(p => p.name === gameState.username);
+    if (!player || !player.alive) {
+        showToast('Sadece yaşayan oyuncular hazır olabilir', 'error');
+        return;
+    }
+    
+    if (!lobbyData.game.discussionReady) {
+        lobbyData.game.discussionReady = [];
+    }
+    
+    const index = lobbyData.game.discussionReady.indexOf(gameState.username);
+    if (index > -1) {
+        lobbyData.game.discussionReady.splice(index, 1);
+    } else {
+        lobbyData.game.discussionReady.push(gameState.username);
+    }
+    
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    updateReadyStatus();
+}
+
+function updateReadyStatus() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const readyList = lobbyData.game.discussionReady || [];
+    const alivePlayers = lobbyData.game.players.filter(p => p.alive);
+    const readyStatusDiv = document.getElementById('ready-status');
+    const readyButton = document.getElementById('ready-button');
+    
+    if (!readyStatusDiv || !readyButton) return;
+    
+    readyStatusDiv.innerHTML = alivePlayers.map(player => {
+        const isReady = readyList.includes(player.name);
+        const isYou = player.name === gameState.username;
+        return `
+            <div class="ready-badge ${isReady ? 'ready' : 'not-ready'} ${isYou ? 'you' : ''}">
+                ${isReady ? '✓' : '○'} ${player.name}${isYou ? ' (Sen)' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Update button state
+    if (readyList.includes(gameState.username)) {
+        readyButton.textContent = 'Hazır Değilim';
+        readyButton.classList.add('ready');
+    } else {
+        readyButton.textContent = 'Hazırım';
+        readyButton.classList.remove('ready');
+    }
+    
+    // Check if all players are ready
+    if (readyList.length === alivePlayers.length && alivePlayers.length > 0) {
+        // All players ready, end discussion early
+        lobbyData.game.phaseEndTime = Date.now();
+        saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    }
+}
+
 function updatePhaseDisplay() {
     document.getElementById('night-content').style.display = 'none';
     document.getElementById('discussion-content').style.display = 'none';
@@ -1175,10 +1156,19 @@ function updatePhaseDisplay() {
                 moveCharacterToHouse(char.name, char.house);
             }
         });
+        
+        updateCharacterStates();
     } else if (game.phase === 'discussion') {
         document.getElementById('discussion-content').style.display = 'block';
         updateChatDisplay();
         setupChatInput();
+        updateReadyStatus();
+        
+        // Reset ready list at start of discussion
+        if (!game.discussionReady) {
+            game.discussionReady = [];
+            saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+        }
         
         // Move all alive characters to center for discussion
         villageState.characters.forEach(char => {
@@ -1186,6 +1176,8 @@ function updatePhaseDisplay() {
                 moveCharacterToCenter(char.name);
             }
         });
+        
+        updateCharacterStates();
     } else if (game.phase === 'voting') {
         document.getElementById('voting-content').style.display = 'block';
         updateVotingDisplay();
@@ -1196,6 +1188,8 @@ function updatePhaseDisplay() {
                 moveCharacterToCenter(char.name);
             }
         });
+        
+        updateCharacterStates();
     }
     
     // Update character alive states
