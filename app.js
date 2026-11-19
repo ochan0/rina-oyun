@@ -3,7 +3,7 @@
 const config = {
     minPlayers: 5,
     maxPlayers: 15,
-    nightTime: 20,
+    nightTime: 15,
     discussionTime: 60,
     votingTime: 30,
     lobbyRefreshInterval: 3000,
@@ -1084,6 +1084,77 @@ function getRoleInfo(role) {
     return roles[role] || roles.villager;
 }
 
+// Chat System
+function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    // Check if player is alive
+    const player = lobbyData.game.players.find(p => p.name === gameState.username);
+    if (!player || !player.alive) {
+        showToast('Sadece yaşayan oyuncular konuşabilir', 'error');
+        return;
+    }
+    
+    // Initialize chat if it doesn't exist
+    if (!lobbyData.game.chat) {
+        lobbyData.game.chat = [];
+    }
+    
+    // Add message to chat
+    lobbyData.game.chat.push({
+        sender: gameState.username,
+        message: message,
+        timestamp: Date.now()
+    });
+    
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    
+    // Clear input
+    input.value = '';
+    
+    // Update chat display
+    updateChatDisplay();
+}
+
+function updateChatDisplay() {
+    const chatBox = document.getElementById('chat-messages');
+    if (!chatBox) return;
+    
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game || !lobbyData.game.chat) {
+        chatBox.innerHTML = '<div class="chat-message system"><div class="text">Henüz mesaj yok. İlk mesajı siz gönderin!</div></div>';
+        return;
+    }
+    
+    const messages = lobbyData.game.chat;
+    chatBox.innerHTML = messages.map(msg => `
+        <div class="chat-message">
+            <div class="sender">${msg.sender}</div>
+            <div class="text">${msg.message}</div>
+        </div>
+    `).join('');
+    
+    // Scroll to bottom
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function setupChatInput() {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    }
+}
+
 function updatePhaseDisplay() {
     document.getElementById('night-content').style.display = 'none';
     document.getElementById('discussion-content').style.display = 'none';
@@ -1106,6 +1177,8 @@ function updatePhaseDisplay() {
         });
     } else if (game.phase === 'discussion') {
         document.getElementById('discussion-content').style.display = 'block';
+        updateChatDisplay();
+        setupChatInput();
         
         // Move all alive characters to center for discussion
         villageState.characters.forEach(char => {

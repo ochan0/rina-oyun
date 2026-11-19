@@ -852,6 +852,34 @@ p {
     }
 }
 
+/* Chat System */
+.chat-input-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+#chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+#chat-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+#chat-input::placeholder {
+    color: var(--text-secondary);
+}
+
 /* Village View */
 .village-view {
     width: 100%;
