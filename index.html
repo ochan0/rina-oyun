@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- Meta Tags -->
     <meta property="og:title" content="Katil Kim? - Sosyal Dedüksiyon Oyunu">
@@ -17,6 +16,24 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔪</text></svg>">
 </head>
 <body>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Password Modal -->
+    <div id="password-modal" class="modal-overlay">
+        <div class="modal">
+            <h3>🔒 Şifreli Lobby</h3>
+            <div class="input-group">
+                <input type="password" id="password-input" placeholder="Şifre giriniz" maxlength="20" />
+            </div>
+            <div id="password-error" class="error-message" style="display: none;"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closePasswordModal()">İptal</button>
+                <button class="btn btn-primary" onclick="submitPassword()">Giriş</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main App Container -->
     <div id="app">
         
@@ -24,20 +41,22 @@
         <div id="main-menu" class="screen active">
             <div class="header">
                 <div class="app-icon">🔪</div>
-                <h1>Katil Kim?</h1>
+                <h1>KATIL KIM?</h1>
+                <p class="subtitle">Sosyal Dedüksiyon Oyunu</p>
             </div>
             
             <div class="content">
                 <div class="input-group">
-                    <input type="text" id="username-input" placeholder="Kullanıcı Adını Gir" maxlength="20" />
+                    <label>Kullanıcı Adı</label>
+                    <input type="text" id="username-input" placeholder="Adını gir..." maxlength="20" />
                 </div>
                 
                 <button class="btn btn-primary" onclick="showCreateLobby()">
                     <span>🎮</span> Lobby Oluştur
                 </button>
                 
-                <button class="btn btn-secondary" onclick="showJoinLobby()">
-                    <span>🚪</span> Lobby'ye Katıl
+                <button class="btn btn-secondary" onclick="showLobbyBrowser()">
+                    <span>🔍</span> Lobbyler
                 </button>
                 
                 <button class="btn btn-info" onclick="showHowToPlay()">
@@ -46,14 +65,66 @@
             </div>
             
             <div class="footer">
-                <p>v1.0.0 | Made with ❤️</p>
+                <p>v2.0.0 | CYBERPUNK EDITION</p>
             </div>
         </div>
 
-        <!-- Join Lobby Screen -->
-        <div id="join-lobby-screen" class="screen">
+        <!-- Create Lobby Screen -->
+        <div id="create-lobby-screen" class="screen">
             <div class="header">
                 <button class="back-btn" onclick="showMainMenu()">←</button>
+                <h2>Lobby Oluştur</h2>
+            </div>
+            
+            <div class="content">
+                <div class="input-group">
+                    <label>Lobby Adı</label>
+                    <input type="text" id="lobby-name-input" placeholder="Odanın adı..." maxlength="30" />
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="private-lobby-checkbox" onchange="togglePasswordField()">
+                    <label for="private-lobby-checkbox">🔒 Şifreli Oda</label>
+                </div>
+
+                <div class="input-group" id="password-field" style="display: none;">
+                    <label>Şifre</label>
+                    <input type="password" id="lobby-password-input" placeholder="Şifre belirle..." maxlength="20" />
+                </div>
+                
+                <button class="btn btn-primary" onclick="createLobby()">
+                    <span>✨</span> Oluştur
+                </button>
+            </div>
+        </div>
+
+        <!-- Lobby Browser Screen -->
+        <div id="lobby-browser-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showMainMenu()">←</button>
+                <h2>Aktif Lobbyler</h2>
+            </div>
+            
+            <div class="content">
+                <div class="input-group">
+                    <input type="text" id="lobby-search-input" placeholder="🔍 Lobby kodu veya isim ara..." onkeyup="searchLobbies()" />
+                </div>
+
+                <div id="lobby-list" class="lobby-list">
+                    <!-- Lobbies will be dynamically added here -->
+                </div>
+
+                <div id="empty-lobbies" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">🎮</div>
+                    <p>Henüz aktif lobby yok.<br>İlk lobbyi sen oluştur!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Lobby Screen (Direct Code) -->
+        <div id="join-lobby-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showLobbyBrowser()">←</button>
                 <h2>Lobby'ye Katıl</h2>
             </div>
             
@@ -62,7 +133,9 @@
                     <label>Lobby Kodu</label>
                     <input type="text" id="lobby-code-input" placeholder="ABC123" maxlength="6" style="text-transform: uppercase;" />
                 </div>
-                <button class="btn btn-primary" onclick="joinLobby()">Katıl</button>
+                <button class="btn btn-primary" onclick="joinLobbyByCode()">
+                    <span>🚪</span> Katıl
+                </button>
             </div>
         </div>
 
@@ -70,12 +143,12 @@
         <div id="lobby-screen" class="screen">
             <div class="header">
                 <button class="back-btn" onclick="leaveLobby()">←</button>
-                <h2>Lobby</h2>
+                <h2 id="lobby-title">Lobby</h2>
             </div>
             
             <div class="content">
-                <div class="lobby-code">
-                    <p>Lobby Kodu:</p>
+                <div class="lobby-code-display">
+                    <p>Lobby Kodu</p>
                     <h3 id="lobby-code-text">------</h3>
                 </div>
                 
@@ -85,11 +158,11 @@
                 </div>
                 
                 <button id="ready-btn" class="btn btn-secondary" onclick="toggleReady()">
-                    Hazırım
+                    <span>✋</span> Hazırım
                 </button>
                 
                 <button id="start-btn" class="btn btn-primary" onclick="startGame()" style="display: none;">
-                    Oyunu Başlat
+                    <span>🎮</span> Oyunu Başlat
                 </button>
                 
                 <p class="info-text">
@@ -165,11 +238,13 @@
                 </div>
                 
                 <div class="roles-reveal">
-                    <h4>Roller:</h4>
+                    <h4>🎭 Roller:</h4>
                     <div id="roles-list"></div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="backToMenu()">Ana Menüye Dön</button>
+                <button class="btn btn-primary" onclick="backToMenu()">
+                    <span>🏠</span> Ana Menüye Dön
+                </button>
             </div>
         </div>
 
