@@ -165,9 +165,10 @@ function startDemoMode() {
     }
     
     gameState.username = username;
+    saveCharacter();
     
     // Create demo lobby
-    const code = 'DEMO00';
+    const code = 'DEMO' + Math.random().toString(36).substring(2, 4).toUpperCase();
     const botNames = ['Ali', 'Ayşe', 'Mehmet', 'Zeynep', 'Can', 'Elif', 'Burak', 'Deniz'];
     const players = [
         { name: username, ready: true, character: gameState.character }
@@ -196,6 +197,7 @@ function startDemoMode() {
     gameState.lobbyCode = code;
     saveToLocalStorage(`lobby_${code}`, lobbyData);
     
+    showToast('Demo modu başlatılıyor...', 'info');
     showLobbyScreen(code);
     
     // Auto start after 2 seconds
@@ -303,6 +305,15 @@ function showMainMenu() {
         clearInterval(lobbyRefreshTimer);
         lobbyRefreshTimer = null;
     }
+    
+    // Load saved character
+    const savedCharacter = getFromLocalStorage('character');
+    if (savedCharacter) {
+        gameState.character = savedCharacter;
+    }
+    
+    gameState.lobbyCode = null;
+    document.getElementById('username-input').value = gameState.username || '';
 }
 
 function showCreateLobby() {
@@ -349,6 +360,7 @@ function createLobby() {
     gameState.lobbyCode = code;
     saveToLocalStorage(`lobby_${code}`, lobbyData);
     
+    showToast('Oda oluşturuldu: ' + code, 'success');
     showLobbyScreen(code);
 }
 
@@ -356,16 +368,22 @@ function showLobbyBrowser() {
     const username = document.getElementById('username-input').value.trim();
     if (!username) {
         showToast('Kullanıcı adı giriniz', 'error');
+        showScreen('main-menu');
         return;
     }
     
     gameState.username = username;
+    cleanupOldLobbies();
     showScreen('lobby-browser-screen');
     refreshLobbyList();
     
     // Auto refresh
     if (lobbyRefreshTimer) clearInterval(lobbyRefreshTimer);
-    lobbyRefreshTimer = setInterval(refreshLobbyList, config.lobbyRefreshInterval);
+    lobbyRefreshTimer = setInterval(() => {
+        if (document.getElementById('lobby-browser-screen').classList.contains('active')) {
+            refreshLobbyList();
+        }
+    }, config.lobbyRefreshInterval);
 }
 
 function refreshLobbyList() {
