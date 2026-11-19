@@ -1,5 +1,5 @@
-/* Katil Kim - Clean Modern Style */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Katil Kim - Hand-Drawn Village Style */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&display=swap');
 
 * {
     margin: 0;
@@ -26,7 +26,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg-secondary);
     height: 100vh;
     display: flex;
@@ -896,53 +896,127 @@ p {
     max-width: 1200px;
     height: 600px;
     margin: 0 auto 24px;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transition: all 0.5s ease;
 }
 
-/* Sky */
+/* Sky - Day and Night */
 .village-sky {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 60%;
-    background: linear-gradient(to bottom, #4A90E2 0%, #87CEEB 50%, #B4D7F1 100%);
+    height: 65%;
+    background: linear-gradient(to bottom, #87CEEB 0%, #B4D8F5 40%, #E8F4F8 100%);
+    transition: background 2s ease;
+}
+
+.village-sky.night {
+    background: linear-gradient(to bottom, #0B1026 0%, #1A2847 40%, #2D3E5F 100%);
 }
 
 /* Sun */
 .sun {
     position: absolute;
-    top: 60px;
-    right: 100px;
-    width: 80px;
-    height: 80px;
-    background: radial-gradient(circle, #FFE484 0%, #FFD93D 70%, #FFC837 100%);
+    top: 70px;
+    right: 120px;
+    width: 90px;
+    height: 90px;
+    background: radial-gradient(circle, #FFE66D 0%, #FFBB3D 70%, #FF9D3D 100%);
     border-radius: 50%;
-    box-shadow: 0 0 40px rgba(255, 228, 132, 0.6), 0 0 80px rgba(255, 228, 132, 0.3);
-    animation: sunPulse 8s ease-in-out infinite;
+    box-shadow: 0 0 50px rgba(255, 230, 109, 0.7), 0 0 100px rgba(255, 230, 109, 0.4);
+    transition: opacity 2s ease, transform 2s ease;
+    opacity: 1;
 }
 
-@keyframes sunPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+.sun.night {
+    opacity: 0;
+    transform: translateY(-50px);
+}
+
+/* Moon */
+.moon {
+    position: absolute;
+    top: 60px;
+    right: 100px;
+    width: 70px;
+    height: 70px;
+    background: radial-gradient(circle at 30% 30%, #FFF9E6 0%, #F5F0D8 50%, #E8DFC5 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(255, 249, 230, 0.6), 0 0 80px rgba(255, 249, 230, 0.3);
+    opacity: 0;
+    transition: opacity 2s ease, transform 2s ease;
+    transform: translateY(50px);
+}
+
+.moon.night {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Moon craters */
+.moon::before,
+.moon::after {
+    content: '';
+    position: absolute;
+    background: rgba(229, 220, 195, 0.5);
+    border-radius: 50%;
+}
+
+.moon::before {
+    width: 15px;
+    height: 15px;
+    top: 20px;
+    left: 18px;
+}
+
+.moon::after {
+    width: 12px;
+    height: 12px;
+    top: 38px;
+    right: 22px;
+}
+
+/* Stars */
+.star {
+    position: absolute;
+    background: #FFF9E6;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 2s ease;
+    animation: starTwinkle 3s ease-in-out infinite;
+}
+
+.star.night {
+    opacity: 1;
+}
+
+@keyframes starTwinkle {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
 }
 
 /* Clouds */
 .cloud {
     position: absolute;
-    background: white;
+    background: rgba(255, 255, 255, 0.85);
     border-radius: 100px;
     opacity: 0.9;
     animation: cloudFloat 60s linear infinite;
+    transition: opacity 2s ease;
+}
+
+.village-sky.night .cloud {
+    opacity: 0.15;
 }
 
 .cloud::before,
 .cloud::after {
     content: '';
     position: absolute;
-    background: white;
+    background: rgba(255, 255, 255, 0.85);
     border-radius: 100px;
 }
 
@@ -1025,58 +1099,45 @@ p {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 40%;
-    background: linear-gradient(to bottom, #7EC850 0%, #6AB83E 50%, #5AA02C 100%);
+    height: 35%;
+    background: linear-gradient(to bottom, #8BC34A 0%, #7CB342 50%, #689F38 100%);
+    transition: background 2s ease;
 }
 
-/* Village Center */
+.village-ground.night {
+    background: linear-gradient(to bottom, #3D5A3D 0%, #2E4A2E 50%, #1F3A1F 100%);
+}
+
+/* Village Center - Town Square */
 .village-center {
     position: absolute;
-    bottom: 50px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(139, 90, 43, 0.3) 0%, transparent 70%);
+    width: 280px;
+    height: 120px;
+    background: radial-gradient(ellipse, rgba(139, 90, 43, 0.25) 0%, transparent 70%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 3px dashed rgba(139, 90, 43, 0.3);
 }
 
-/* Grass Patches */
+/* Grass Patches - More scattered */
 .grass-patch {
     position: absolute;
-    width: 40px;
-    height: 30px;
-    background: linear-gradient(to bottom, #6ABF4B 0%, #5AA03C 100%);
-    border-radius: 50% 50% 0 0;
-    opacity: 0.7;
+    width: 35px;
+    height: 25px;
+    background: #7CB342;
+    border-radius: 50% 50% 45% 45%;
+    opacity: 0.6;
 }
 
-.grass-1 {
-    top: -100px;
-    left: 20px;
-    transform: rotate(-15deg);
-}
-
-.grass-2 {
-    top: -80px;
-    right: 30px;
-    transform: rotate(20deg) scale(0.8);
-}
-
-.grass-3 {
-    bottom: 20px;
-    left: 40px;
-    transform: rotate(10deg) scale(1.2);
-}
-
-.grass-4 {
-    bottom: 30px;
-    right: 50px;
-    transform: rotate(-10deg);
-}
+.grass-1 { top: 20px; left: 60px; transform: rotate(-15deg) scale(0.9); }
+.grass-2 { top: 15px; right: 80px; transform: rotate(20deg) scale(1.1); }
+.grass-3 { bottom: 90px; left: 100px; transform: rotate(10deg) scale(0.8); }
+.grass-4 { bottom: 95px; right: 120px; transform: rotate(-10deg); }
 
 /* Characters Container */
 .characters-container {
@@ -1127,65 +1188,195 @@ p {
     bottom: 0;
 }
 
+/* Houses - Varied and Charming */
 .house {
     position: absolute;
-    width: 80px;
-    height: 90px;
+    width: 85px;
+    height: 95px;
     transition: transform 0.3s ease;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
 .house:hover {
-    transform: scale(1.05);
+    transform: scale(1.08) translateY(-2px);
 }
 
 .house-roof {
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 35px solid #8B4513;
+    border-left: 42.5px solid transparent;
+    border-right: 42.5px solid transparent;
+    border-bottom: 38px solid #8B4513;
     position: absolute;
     top: 0;
     left: 0;
+    filter: brightness(0.95);
 }
 
 .house-body {
-    width: 80px;
-    height: 55px;
-    background: linear-gradient(to bottom, #D2691E 0%, #A0522D 100%);
+    width: 85px;
+    height: 57px;
+    background: #D2691E;
     position: absolute;
     bottom: 0;
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 6px 6px 4px 4px;
+    box-shadow: inset 0 -3px 8px rgba(0, 0, 0, 0.15);
 }
 
 .house-door {
-    width: 25px;
-    height: 35px;
+    width: 24px;
+    height: 36px;
     background: linear-gradient(to bottom, #654321 0%, #4A3219 100%);
     position: absolute;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 4px 4px 0 0;
+    border-radius: 6px 6px 0 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.house-door::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #FFD700;
+    border-radius: 50%;
+    right: 4px;
+    top: 18px;
 }
 
 .house-window {
-    width: 15px;
-    height: 15px;
-    background: linear-gradient(135deg, #87CEEB 0%, #4A90E2 100%);
+    width: 16px;
+    height: 16px;
+    background: #4A90E2;
     position: absolute;
-    top: 10px;
-    border-radius: 2px;
+    top: 12px;
+    border-radius: 3px;
     box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3);
+    transition: background 2s ease, box-shadow 2s ease;
+}
+
+.house-window::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.2);
+    top: 50%;
+    left: 0;
+}
+
+.house-window::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    left: 50%;
+    top: 0;
+}
+
+.village-view.night .house-window {
+    background: radial-gradient(circle, #FFE66D 0%, #FFBB3D 70%);
+    box-shadow: 0 0 12px rgba(255, 230, 109, 0.8), 0 0 24px rgba(255, 230, 109, 0.4);
 }
 
 .house-window:first-of-type {
-    left: 10px;
+    left: 12px;
 }
 
 .house-window:last-of-type {
-    right: 10px;
+    right: 12px;
+}
+
+/* House Owner Label */
+.house-owner {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #2D3E50;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    font-family: 'Fredoka', 'Quicksand', sans-serif;
+    transition: opacity 2s ease;
+}
+
+.village-view.night .house-owner {
+    opacity: 0.85;
+}
+
+/* House Color Variations */
+.house:nth-child(1) .house-body { background: #E67E22; }
+.house:nth-child(1) .house-roof { border-bottom-color: #A04000; }
+
+.house:nth-child(2) .house-body { background: #C0754E; }
+.house:nth-child(2) .house-roof { border-bottom-color: #8B4513; }
+
+.house:nth-child(3) .house-body { background: #D68E3B; }
+.house:nth-child(3) .house-roof { border-bottom-color: #95621F; }
+
+.house:nth-child(4) .house-body { background: #CD853F; }
+.house:nth-child(4) .house-roof { border-bottom-color: #8B5A2B; }
+
+.house:nth-child(5) .house-body { background: #C27C4C; }
+.house:nth-child(5) .house-roof { border-bottom-color: #7D4814; }
+
+.house:nth-child(6) .house-body { background: #D2691E; }
+.house:nth-child(6) .house-roof { border-bottom-color: #9B4D10; }
+
+.house:nth-child(7) .house-body { background: #BC6C3A; }
+.house:nth-child(7) .house-roof { border-bottom-color: #8B4513; }
+
+.house:nth-child(8) .house-body { background: #CC7A45; }
+.house:nth-child(8) .house-roof { border-bottom-color: #A0522D; }
+
+/* Street Lamps */
+.street-lamp {
+    position: absolute;
+    width: 8px;
+    height: 70px;
+    background: linear-gradient(to bottom, #4A4A4A 0%, #2D2D2D 100%);
+    border-radius: 4px;
+    bottom: 0;
+}
+
+.street-lamp::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 20px;
+    background: #FFD700;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 2s ease, box-shadow 2s ease;
+    box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+}
+
+.village-view.night .street-lamp::before {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.7), 0 0 50px rgba(255, 215, 0, 0.4);
+}
+
+.street-lamp::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    background: #2D2D2D;
+    border-radius: 50%;
 }
 
 /* Ready Status */

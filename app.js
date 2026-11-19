@@ -756,8 +756,38 @@ function assignRoles(players) {
 // Village Rendering System
 let villageState = {
     houses: [],
-    characters: []
+    characters: [],
+    isNight: false
 };
+
+function setVillageTimeOfDay(isNight) {
+    const villageView = document.getElementById('village-view');
+    const villageSky = document.getElementById('village-sky');
+    const villageGround = document.getElementById('village-ground');
+    const sun = document.getElementById('sun');
+    const moon = document.getElementById('moon');
+    const stars = document.querySelectorAll('.star');
+    
+    if (!villageView) return;
+    
+    villageState.isNight = isNight;
+    
+    if (isNight) {
+        villageView.classList.add('night');
+        villageSky.classList.add('night');
+        villageGround.classList.add('night');
+        sun.classList.add('night');
+        moon.classList.add('night');
+        stars.forEach(star => star.classList.add('night'));
+    } else {
+        villageView.classList.remove('night');
+        villageSky.classList.remove('night');
+        villageGround.classList.remove('night');
+        sun.classList.remove('night');
+        moon.classList.remove('night');
+        stars.forEach(star => star.classList.remove('night'));
+    }
+}
 
 function initializeVillage() {
     const housesContainer = document.getElementById('houses-container');
@@ -769,6 +799,9 @@ function initializeVillage() {
     housesContainer.innerHTML = '';
     charactersContainer.innerHTML = '';
     
+    // Keep street lamps
+    const existingLamps = housesContainer.parentElement.querySelectorAll('.street-lamp');
+    
     // Generate houses in a circle pattern
     const containerWidth = 1200;
     const containerHeight = 600;
@@ -779,7 +812,7 @@ function initializeVillage() {
     villageState.houses = [];
     for (let i = 0; i < config.village.houseCount; i++) {
         const angle = (Math.PI * 2 * i) / config.village.houseCount - Math.PI / 2;
-        const x = centerX + Math.cos(angle) * radius - 40;
+        const x = centerX + Math.cos(angle) * radius - 42.5;
         const y = centerY + Math.sin(angle) * radius + 40;
         
         const house = document.createElement('div');
@@ -794,6 +827,7 @@ function initializeVillage() {
                 <div class="house-window"></div>
                 <div class="house-door"></div>
             </div>
+            <div class="house-owner"></div>
         `;
         
         housesContainer.appendChild(house);
@@ -802,7 +836,8 @@ function initializeVillage() {
             x: x,
             y: y,
             element: house,
-            owner: null
+            owner: null,
+            ownerLabel: house.querySelector('.house-owner')
         });
     }
     
@@ -812,6 +847,11 @@ function initializeVillage() {
         villageState.characters = lobbyData.game.players.map((player, index) => {
             const house = villageState.houses[index % villageState.houses.length];
             house.owner = player.name;
+            
+            // Set house owner label
+            if (house.ownerLabel) {
+                house.ownerLabel.textContent = player.name;
+            }
             
             const charDiv = document.createElement('div');
             charDiv.className = 'character';
@@ -942,6 +982,9 @@ function initializeGame() {
     showScreen('game-screen');
     updateGameDisplay();
     initializeVillage();
+    
+    // Initialize to day time by default
+    setVillageTimeOfDay(false);
     
     if (gameTimer) clearInterval(gameTimer);
     gameTimer = setInterval(() => {
@@ -1150,6 +1193,9 @@ function updatePhaseDisplay() {
         document.getElementById('night-content').style.display = 'block';
         updateNightTargets();
         
+        // Set village to night
+        setVillageTimeOfDay(true);
+        
         // Move all characters to their houses
         villageState.characters.forEach(char => {
             if (char.alive) {
@@ -1163,6 +1209,9 @@ function updatePhaseDisplay() {
         updateChatDisplay();
         setupChatInput();
         updateReadyStatus();
+        
+        // Set village to day
+        setVillageTimeOfDay(false);
         
         // Reset ready list at start of discussion
         if (!game.discussionReady) {
@@ -1181,6 +1230,9 @@ function updatePhaseDisplay() {
     } else if (game.phase === 'voting') {
         document.getElementById('voting-content').style.display = 'block';
         updateVotingDisplay();
+        
+        // Set village to day
+        setVillageTimeOfDay(false);
         
         // Keep characters at center for voting
         villageState.characters.forEach(char => {
