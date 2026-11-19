@@ -1,0 +1,21 @@
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# FiveM
+__resource.lua
+
+# Node (eğer build tool kullanırsanız)
+node_modules/
+package-lock.json
+
+# Temp
+*.tmp
+*.temp

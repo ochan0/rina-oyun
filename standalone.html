@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katil Kim? - Sosyal Dedüksiyon Oyunu</title>
+    <meta name="description" content="Among Us ve Mafia tarzı sosyal dedüksiyon oyunu. Arkadaşlarınla oyna!">
+    <link rel="stylesheet" href="html/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- SEO & Social Media -->
+    <meta property="og:title" content="Katil Kim? - Sosyal Dedüksiyon Oyunu">
+    <meta property="og:description" content="Among Us ve Mafia tarzı sosyal dedüksiyon oyunu. Arkadaşlarınla oyna!">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔪</text></svg>">
+    
+    <style>
+        /* Override for standalone */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #app {
+            margin: 0 auto;
+            max-width: 420px;
+            border-radius: 0;
+        }
+        
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            
+            #app {
+                border-radius: 20px;
+                height: 844px;
+            }
+        }
+        
+        /* Landing overlay for standalone */
+        #landing-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s;
+        }
+        
+        #landing-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .landing-content {
+            text-align: center;
+            padding: 40px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .landing-icon {
+            font-size: 120px;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .landing-title {
+            color: #fff;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .landing-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+        
+        .landing-btn {
+            padding: 18px 50px;
+            background: #fff;
+            color: #667eea;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .landing-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Standalone Landing -->
+    <div id="landing-overlay">
+        <div class="landing-content">
+            <div class="landing-icon">🔪</div>
+            <h1 class="landing-title">Katil Kim?</h1>
+            <p class="landing-subtitle">Sosyal Dedüksiyon Oyunu</p>
+            <button class="landing-btn" onclick="startGame()">Oyuna Başla</button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="hidden">
+        <!-- Ana Menü -->
+        <div id="main-menu" class="screen active">
+            <div class="header">
+                <div class="app-icon">🔪</div>
+                <h1>Katil Kim?</h1>
+                <p class="subtitle">Sosyal Dedüksiyon Oyunu</p>
+            </div>
+
+            <div class="username-section">
+                <input type="text" id="username-input" placeholder="Kullanıcı Adını Gir" maxlength="20">
+            </div>
+
+            <div class="menu-buttons">
+                <button class="btn btn-primary" onclick="showCreateLobby()">
+                    <span class="icon">➕</span>
+                    Lobby Oluştur
+                </button>
+                <button class="btn btn-secondary" onclick="showJoinLobby()">
+                    <span class="icon">🚪</span>
+                    Lobby'ye Katıl
+                </button>
+                <button class="btn btn-info" onclick="showHowToPlay()">
+                    <span class="icon">❓</span>
+                    Nasıl Oynanır?
+                </button>
+            </div>
+
+            <div class="footer">
+                <p>v1.0.0 | Made with ❤️</p>
+            </div>
+        </div>
+
+        <!-- Join Lobby Ekranı -->
+        <div id="join-lobby-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showMainMenu()">← Geri</button>
+                <h2>Lobby'ye Katıl</h2>
+            </div>
+
+            <div class="form-section">
+                <div class="input-group">
+                    <label>Lobby Kodu</label>
+                    <input type="text" id="lobby-code-input" placeholder="ABC123" maxlength="6">
+                </div>
+                <button class="btn btn-primary" onclick="joinLobby()">Katıl</button>
+            </div>
+        </div>
+
+        <!-- Lobby Ekranı -->
+        <div id="lobby-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="leaveLobby()">← Çık</button>
+                <h2>Lobby</h2>
+                <div class="lobby-code-display">
+                    <span>Kod:</span>
+                    <span id="lobby-code-text" class="code">------</span>
+                </div>
+            </div>
+
+            <div class="players-section">
+                <h3>Oyuncular (<span id="player-count">0</span>/15)</h3>
+                <div id="players-list" class="players-list"></div>
+            </div>
+
+            <div class="lobby-actions">
+                <button class="btn btn-ready" id="ready-btn" onclick="toggleReady()">
+                    <span class="icon">✓</span>
+                    Hazır
+                </button>
+                <button class="btn btn-primary" id="start-btn" onclick="startGame()" style="display: none;">
+                    🎮 Oyunu Başlat
+                </button>
+            </div>
+
+            <div class="lobby-info">
+                <p>💡 Minimum 5 oyuncu gerekli</p>
+            </div>
+        </div>
+
+        <!-- Oyun Ekranı -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="game-phase">
+                    <span id="phase-icon">🌙</span>
+                    <span id="phase-text">Gece</span>
+                </div>
+                <div class="game-round">
+                    <span>Round:</span>
+                    <span id="round-number">1</span>
+                </div>
+                <div class="game-timer">
+                    <span id="timer-text">00:30</span>
+                </div>
+            </div>
+
+            <div class="role-card" id="role-card">
+                <div class="role-icon" id="role-icon">🔪</div>
+                <h2 id="role-name">Rolün Yükleniyor...</h2>
+                <p id="role-description">...</p>
+            </div>
+
+            <div class="game-content" id="game-content">
+                <!-- Night Phase Content -->
+                <div id="night-content" class="phase-content">
+                    <h3>Hedef Seç</h3>
+                    <div id="target-list" class="target-list"></div>
+                </div>
+
+                <!-- Discussion Phase Content -->
+                <div id="discussion-content" class="phase-content">
+                    <h3>Tartışma Zamanı</h3>
+                    <p class="info-text">Diğer oyuncularla konuşun ve şüphelendiğiniz kişileri belirleyin.</p>
+                    <div id="alive-players-discussion" class="players-grid"></div>
+                </div>
+
+                <!-- Voting Phase Content -->
+                <div id="voting-content" class="phase-content">
+                    <h3>Oylama Zamanı</h3>
+                    <p class="info-text">Kim idam edilsin?</p>
+                    <div id="vote-count-display" class="vote-count">
+                        Oy Sayısı: <span id="vote-count">0</span>
+                    </div>
+                    <div id="voting-list" class="voting-list"></div>
+                </div>
+            </div>
+
+            <div class="alive-dead-counter">
+                <div class="counter-item">
+                    <span class="counter-icon">💚</span>
+                    <span>Yaşayan: <span id="alive-count">0</span></span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-icon">💀</span>
+                    <span>Ölen: <span id="dead-count">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game End Ekranı -->
+        <div id="game-end-screen" class="screen">
+            <div class="header">
+                <h2>Oyun Bitti!</h2>
+            </div>
+
+            <div class="winner-section">
+                <div id="winner-icon" class="winner-icon">🏆</div>
+                <h1 id="winner-text">Köylüler Kazandı!</h1>
+            </div>
+
+            <div class="roles-reveal">
+                <h3>Roller</h3>
+                <div id="roles-list" class="roles-list"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="backToMenu()">
+                Ana Menüye Dön
+            </button>
+        </div>
+
+        <!-- How to Play Ekranı -->
+        <div id="how-to-play-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showMainMenu()">← Geri</button>
+                <h2>Nasıl Oynanır?</h2>
+            </div>
+
+            <div class="how-to-play-content">
+                <div class="role-explanation">
+                    <h3>🔪 Katil</h3>
+                    <p>Her gece bir köylüyü öldürür. Amacın köylülerin sayısını azaltmak ve çoğunluğu ele geçirmek.</p>
+                </div>
+
+                <div class="role-explanation">
+                    <h3>🕵️ Dedektif</h3>
+                    <p>Her gece bir oyuncuyu araştırabilir ve rolünü öğrenebilir.</p>
+                </div>
+
+                <div class="role-explanation">
+                    <h3>💉 Doktor</h3>
+                    <p>Her gece bir oyuncuyu koruyabilir. Eğer o kişi katil tarafından hedef alınırsa ölmez.</p>
+                </div>
+
+                <div class="role-explanation">
+                    <h3>👨‍🌾 Köylü</h3>
+                    <p>Özel bir gücün yok. Gündüz tartışmalarda katilleri bulmaya çalış!</p>
+                </div>
+
+                <div class="gameplay-steps">
+                    <h3>Oyun Akışı</h3>
+                    <ol>
+                        <li><strong>Gece:</strong> Katiller öldürür, doktor korur, dedektif araştırır</li>
+                        <li><strong>Gündüz (Tartışma):</strong> Herkes konuşur ve şüphelileri tartışır</li>
+                        <li><strong>Oylama:</strong> Bir kişiyi idam etmek için oy kullanılır</li>
+                        <li>Round tekrarlanır ta ki bir takım kazanana kadar</li>
+                    </ol>
+                </div>
+
+                <div class="win-conditions">
+                    <h3>Kazanma Koşulları</h3>
+                    <p><strong>Köylüler:</strong> Tüm katilleri idam ederek kazanır</p>
+                    <p><strong>Katiller:</strong> Köylülerin sayısını kendi sayılarına eşitleyerek kazanır</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="html/app.js"></script>
+    <script>
+        // Standalone mode - auto show on load
+        function startGame() {
+            document.getElementById('landing-overlay').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
