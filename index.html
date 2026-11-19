@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Katil Kim? - Sosyal Dedüksiyon Oyunu</title>
+    <meta name="description" content="Arkadaşlarınla oynayabileceğin heyecan dolu sosyal dedüksiyon oyunu!">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Meta Tags -->
+    <meta property="og:title" content="Katil Kim? - Sosyal Dedüksiyon Oyunu">
+    <meta property="og:description" content="Arkadaşlarınla oynayabileceğin heyecan dolu sosyal dedüksiyon oyunu!">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔪</text></svg>">
+</head>
+<body>
+    <!-- Main App Container -->
+    <div id="app">
+        
+        <!-- Main Menu -->
+        <div id="main-menu" class="screen active">
+            <div class="header">
+                <div class="app-icon">🔪</div>
+                <h1>Katil Kim?</h1>
+            </div>
+            
+            <div class="content">
+                <div class="input-group">
+                    <input type="text" id="username-input" placeholder="Kullanıcı Adını Gir" maxlength="20" />
+                </div>
+                
+                <button class="btn btn-primary" onclick="showCreateLobby()">
+                    <span>🎮</span> Lobby Oluştur
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showJoinLobby()">
+                    <span>🚪</span> Lobby'ye Katıl
+                </button>
+                
+                <button class="btn btn-info" onclick="showHowToPlay()">
+                    <span>📖</span> Nasıl Oynanır?
+                </button>
+            </div>
+            
+            <div class="footer">
+                <p>v1.0.0 | Made with ❤️</p>
+            </div>
+        </div>
+
+        <!-- Join Lobby Screen -->
+        <div id="join-lobby-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showMainMenu()">←</button>
+                <h2>Lobby'ye Katıl</h2>
+            </div>
+            
+            <div class="content">
+                <div class="input-group">
+                    <label>Lobby Kodu</label>
+                    <input type="text" id="lobby-code-input" placeholder="ABC123" maxlength="6" style="text-transform: uppercase;" />
+                </div>
+                <button class="btn btn-primary" onclick="joinLobby()">Katıl</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="leaveLobby()">←</button>
+                <h2>Lobby</h2>
+            </div>
+            
+            <div class="content">
+                <div class="lobby-code">
+                    <p>Lobby Kodu:</p>
+                    <h3 id="lobby-code-text">------</h3>
+                </div>
+                
+                <div class="player-count">
+                    <p>Oyuncular: <span id="player-count">0/15</span></p>
+                    <div id="players-list" class="players-list"></div>
+                </div>
+                
+                <button id="ready-btn" class="btn btn-secondary" onclick="toggleReady()">
+                    Hazırım
+                </button>
+                
+                <button id="start-btn" class="btn btn-primary" onclick="startGame()" style="display: none;">
+                    Oyunu Başlat
+                </button>
+                
+                <p class="info-text">
+                    <span>⚠️</span> Minimum 5 oyuncu gerekli
+                </p>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="header game-header">
+                <div class="phase-indicator">
+                    <span id="phase-icon">🌙</span>
+                    <span id="phase-text">Gece</span>
+                </div>
+                <div class="round-info">
+                    <span>Tur: <span id="round-number">1</span></span>
+                </div>
+                <div class="timer">
+                    <span id="timer-text">00:30</span>
+                </div>
+            </div>
+            
+            <div class="role-card">
+                <div class="role-icon" id="role-icon">🔪</div>
+                <h3 id="role-name">Rolün Yükleniyor...</h3>
+                <p id="role-description">Lütfen bekleyin...</p>
+            </div>
+            
+            <div id="game-content" class="content">
+                <!-- Night Phase Content -->
+                <div id="night-content" style="display: none;">
+                    <h3>Hedef Seç</h3>
+                    <div class="target-list" id="night-target-list"></div>
+                </div>
+                
+                <!-- Discussion Phase Content -->
+                <div id="discussion-content" style="display: none;">
+                    <h3>Tartışma Zamanı</h3>
+                    <div class="players-grid" id="alive-players-discussion"></div>
+                </div>
+                
+                <!-- Voting Phase Content -->
+                <div id="voting-content" style="display: none;">
+                    <h3>Oylama Zamanı</h3>
+                    <p class="vote-count">
+                        Toplam Oy: <span id="vote-count">0</span>
+                    </p>
+                    <div class="voting-list" id="voting-list"></div>
+                </div>
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat">
+                    <span>✅</span> Hayatta: <span id="alive-count">0</span>
+                </div>
+                <div class="stat">
+                    <span>💀</span> Öldü: <span id="dead-count">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game End Screen -->
+        <div id="game-end-screen" class="screen">
+            <div class="header">
+                <h2>Oyun Bitti!</h2>
+            </div>
+            
+            <div class="content">
+                <div class="winner-announcement">
+                    <div class="winner-icon" id="winner-icon">🏆</div>
+                    <h3 id="winner-text">Köylüler Kazandı!</h3>
+                </div>
+                
+                <div class="roles-reveal">
+                    <h4>Roller:</h4>
+                    <div id="roles-list"></div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="backToMenu()">Ana Menüye Dön</button>
+            </div>
+        </div>
+
+        <!-- How to Play Screen -->
+        <div id="how-to-play-screen" class="screen">
+            <div class="header">
+                <button class="back-btn" onclick="showMainMenu()">←</button>
+                <h2>Nasıl Oynanır?</h2>
+            </div>
+            
+            <div class="content scrollable">
+                <div class="info-section">
+                    <h3>🎯 Oyun Amacı</h3>
+                    <p>Katil Kim?, 5-15 kişi ile oynanan sosyal dedüksiyon oyunudur. Köylüler katilleri bulmaya, katiller ise tüm köylüleri öldürmeye çalışır.</p>
+                </div>
+                
+                <div class="info-section">
+                    <h3>👥 Roller</h3>
+                    
+                    <div class="role-info">
+                        <div class="role-header">
+                            <span class="role-icon">🔪</span>
+                            <strong>Katil</strong>
+                        </div>
+                        <p>Her gece bir kişiyi öldürür. Tüm köylüleri öldürmek için çalışır.</p>
+                    </div>
+                    
+                    <div class="role-info">
+                        <div class="role-header">
+                            <span class="role-icon">🕵️</span>
+                            <strong>Dedektif</strong>
+                        </div>
+                        <p>Her gece bir kişinin rolünü öğrenebilir. Katilleri bulmaya çalışır.</p>
+                    </div>
+                    
+                    <div class="role-info">
+                        <div class="role-header">
+                            <span class="role-icon">💉</span>
+                            <strong>Doktor</strong>
+                        </div>
+                        <p>Her gece bir kişiyi korur. Seçtiği kişi o gece öldürülemez.</p>
+                    </div>
+                    
+                    <div class="role-info">
+                        <div class="role-header">
+                            <span class="role-icon">👨‍🌾</span>
+                            <strong>Köylü</strong>
+                        </div>
+                        <p>Özel yetenekleri yoktur. Gün içi oylamada katilleri bulmaya çalışır.</p>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>🌙 Oyun Akışı</h3>
+                    <ol>
+                        <li><strong>Gece Fazı:</strong> Katil öldürür, dedektif araştırır, doktor korur.</li>
+                        <li><strong>Tartışma Fazı:</strong> Oyuncular konuşur ve şüphelilerini belirtir.</li>
+                        <li><strong>Oylama Fazı:</strong> Oyuncular bir kişiyi oylar ve idam eder.</li>
+                        <li>Oyun, katiller veya köylüler kazanana kadar devam eder.</li>
+                    </ol>
+                </div>
+                
+                <div class="info-section">
+                    <h3>🏆 Kazanma Koşulları</h3>
+                    <ul>
+                        <li><strong>Köylüler:</strong> Tüm katilleri bulup öldürürler.</li>
+                        <li><strong>Katiller:</strong> Katil sayısı ≥ köylü sayısı olduğunda.</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h3>💡 İpuçları</h3>
+                    <ul>
+                        <li>Gece fazında dikkatli seçim yapın</li>
+                        <li>Tartışma sırasında davranışları inceleyin</li>
+                        <li>Rolünüzü çok erken açıklamayın</li>
+                        <li>Takım arkadaşlarınızla işbirliği yapın</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

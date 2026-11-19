@@ -1,7 +1,0 @@
-Ses dosyalarını buraya ekleyin:
-- night.mp3 - Gece fazı başlangıç sesi
-- day.mp3 - Gündüz fazı başlangıç sesi
-- vote.mp3 - Oylama sesi
-- death.mp3 - Ölüm sesi
-- win.mp3 - Kazanma sesi
-- notification.mp3 - Bildirim sesi

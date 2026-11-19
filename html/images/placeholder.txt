@@ -1,7 +1,0 @@
-Görselleri buraya ekleyin:
-- logo.png - Uygulama logosu
-- killer.png - Katil ikonu
-- detective.png - Dedektif ikonu
-- doctor.png - Doktor ikonu
-- villager.png - Köylü ikonu
-- background.jpg - Arka plan görseli

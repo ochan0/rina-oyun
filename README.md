@@ -1,230 +1,160 @@
 # 🔪 Katil Kim? - Sosyal Dedüksiyon Oyunu
 
-FiveM için geliştirilmiş, **Among Us** ve **Mafia/Werewolf** tarzında sosyal dedüksiyon telefon uygulaması. Oyuncular gizli rollerle birbirlerini kandırmaya, şüphelileri bulmaya ve kazanmaya çalışır!
+Arkadaşlarınla oynayabileceğin heyecan dolu sosyal dedüksiyon oyunu! Among Us, Mafia ve Werewolf tarzı bir web tabanlı multiplayer oyun.
 
-## 🎮 Özellikler
+## 🎮 Oyun Hakkında
 
-### ✨ Temel Özellikler
-- **Lobby Sistemi**: Kolay lobby oluşturma ve katılma (6 haneli kodlarla)
-- **Kullanıcı Adı Sistemi**: SQL gerektirmeyen LocalStorage tabanlı
-- **4 Farklı Rol**: Katil, Dedektif, Doktor, Köylü
-- **Faz Sistemi**: Gece, Tartışma, Oylama
-- **Gerçek Zamanlı Oyun**: Zamanlayıcılı turlar
-- **Modern UI**: Gradient'lı, animasyonlu, mobil-uyumlu arayüz
+**Katil Kim?** 5-15 kişi ile oynanabilen browser tabanlı sosyal dedüksiyon oyunudur. Oyuncular katiller ve köylüler olmak üzere iki gruba ayrılır. Köylüler katilleri bulmaya çalışırken, katiller tüm köylüleri öldürmeye çalışır.
 
-### 🎭 Roller
+## 🌟 Özellikler
 
-#### 🔪 Katil (Mafia)
-- **Amaç**: Köylülerin sayısını azalt, çoğunluğu ele geçir
-- **Yetenek**: Her gece bir köylüyü öldürür
-- **Kazanma**: Katil sayısı ≥ Köylü sayısı
+- ✅ Tamamen **ücretsiz** ve **açık kaynak**
+- 📱 Mobil uyumlu responsive tasarım
+- 🎲 5-15 oyuncu desteği
+- 🌙 Gece/Gündüz faz sistemi
+- 🎭 4 farklı rol (Katil, Dedektif, Doktor, Köylü)
+- 🔒 Lobby sistemi ile özel odalar
+- 💾 LocalStorage ile veri saklama (SQL yok)
+- 🎨 Modern ve şık arayüz
 
-#### 🕵️ Dedektif (Köylü)
-- **Amaç**: Katilleri bul ve idam et
-- **Yetenek**: Her gece bir oyuncuyu araştırır ve rolünü öğrenir
-- **Kazanma**: Tüm katiller ölürse
+## 👥 Roller
 
-#### 💉 Doktor (Köylü)
-- **Amaç**: Köylüleri koru
-- **Yetenek**: Her gece bir oyuncuyu korur (katil hedef alırsa ölmez)
-- **Kazanma**: Tüm katiller ölürse
+### 🔪 Katil
+- Her gece bir kişiyi öldürür
+- Tüm köylüleri öldürmek için çalışır
+- Oyuncu sayısına göre 1-3 katil olabilir
 
-#### 👨‍🌾 Köylü (Köylü)
-- **Amaç**: Katilleri bul
-- **Yetenek**: Yok (tartışmalarda akıl kullan!)
-- **Kazanma**: Tüm katiller ölürse
+### 🕵️ Dedektif
+- Her gece bir kişinin rolünü öğrenebilir
+- Katilleri bulmaya çalışır
+- Bilgilerini akıllıca kullanmalıdır
 
-## 📦 Kurulum
+### 💉 Doktor
+- Her gece bir kişiyi korur
+- Koruduğu kişi o gece öldürülemez
+- Kendini de koruyabilir
 
-### FiveM Versiyonu
-
-1. Bu repository'yi indirin
-2. `katilkim` klasörünü `resources` dizinine kopyalayın
-3. `server.cfg` dosyanıza şunu ekleyin:
-   ```cfg
-   ensure katilkim
-   ```
-4. Sunucuyu restart edin
-
-### Komut
-
-Oyunu açmak için:
-```
-/katilkim
-```
-
-Veya telefon scriptinize entegre edebilirsiniz:
-```lua
-exports['katilkim']:OpenApp()
-```
-
-## 🌐 GitHub Pages Standalone Versiyonu
-
-Bu uygulama **SQL gerektirmeden** çalışır ve GitHub Pages'te host edilebilir!
-
-### Standalone Kurulum
-
-1. `html/` klasöründeki dosyaları GitHub Pages'e yükleyin
-2. Tarayıcıdan açın
-3. Kullanıcı adı girin ve oyna!
-
-**LocalStorage** kullandığı için veritabanına ihtiyaç yok. Tüm veriler tarayıcıda saklanır.
-
-## ⚙️ Konfigürasyon
-
-[`config.lua`](config.lua) dosyasından oyun ayarlarını düzenleyebilirsiniz:
-
-```lua
-Config.MinPlayers = 5 -- Minimum oyuncu sayısı
-Config.MaxPlayers = 15 -- Maximum oyuncu sayısı
-
-Config.DiscussionTime = 120 -- Tartışma süresi (saniye)
-Config.VotingTime = 60 -- Oylama süresi (saniye)
-Config.NightTime = 30 -- Gece süresi (saniye)
-```
+### 👨‍🌾 Köylü
+- Özel yetenekleri yoktur
+- Gündüz oylamalarında katilleri bulmaya çalışır
+- Takım çalışması çok önemlidir
 
 ## 🎯 Nasıl Oynanır?
 
-### 1️⃣ Lobby Oluştur/Katıl
-- Kullanıcı adını gir
-- "Lobby Oluştur" veya "Lobby'ye Katıl" seç
-- Lobby kodunu paylaş (örn: `ABC123`)
-- Minimum 5 oyuncu bekle
+### 1. Oyuna Başlama
+- Kullanıcı adınızı girin
+- **Lobby Oluştur** veya **Lobby'ye Katıl** seçeneğini seçin
+- Arkadaşlarınızla 6 haneli lobby kodunu paylaşın
 
-### 2️⃣ Oyun Başlasın
-- Herkes "Hazır" olsun
-- Host "Oyunu Başlat" butonuna bassın
-- Roller gizlice dağıtılır
+### 2. Oyun Fazları
 
-### 3️⃣ Gece Fazı (30sn)
-- **Katil**: Bir köylü seç ve öldür
-- **Dedektif**: Bir oyuncuyu araştır
-- **Doktor**: Bir oyuncuyu koru
-- **Köylü**: Bekle
+#### 🌙 Gece Fazı (30 saniye)
+- Katiller hedef seçer
+- Dedektif bir kişiyi araştırır
+- Doktor bir kişiyi korur
+- Köylüler bekler
 
-### 4️⃣ Gündüz - Tartışma (2dk)
-- Kim öldü görünür
-- Herkes konuşur ve şüpheli arar
-- Dedektif bilgilerini paylaşabilir (veya gizleyebilir)
+#### 💬 Tartışma Fazı (120 saniye)
+- Gece yaşananlar hakkında konuşulur
+- Şüpheliler belirlenir
+- Taktikler oluşturulur
 
-### 5️⃣ Oylama (1dk)
-- Bir kişiye oy ver
-- En çok oyu alan idam edilir
-- Rolü açıklanır
+#### 🗳️ Oylama Fazı (60 saniye)
+- Her oyuncu bir kişiye oy verir
+- En çok oy alan kişi oyundan çıkar (idam edilir)
+- Eşitlik durumunda kimse çıkmaz
 
-### 6️⃣ Tekrar
-- Yeni round başlar (Gece → Gündüz → Oylama)
-- Bir takım kazanana kadar devam eder
+### 3. Kazanma Koşulları
 
-## 🏆 Kazanma Koşulları
+**Köylüler Kazanır:**
+- Tüm katilleri buldukları zaman
 
-- **Köylüler Kazanır**: Tüm katiller idam edilirse
-- **Katiller Kazanır**: Katil sayısı ≥ Köylü sayısı
+**Katiller Kazanır:**
+- Katil sayısı ≥ köylü sayısı olduğunda
 
-## 🛠️ Teknik Detaylar
+## 🚀 GitHub Pages'de Yayınlama
 
-### Dosya Yapısı
+1. Bu repository'yi fork'layın veya kopyalayın
+2. GitHub repository ayarlarından **Pages** bölümüne gidin
+3. Source olarak **main branch** seçin
+4. Deploy olmasını bekleyin
+5. Verilen linki arkadaşlarınızla paylaşın!
+
+**Örnek Link:** `https://kullaniciadi.github.io/rina-oyun/`
+
+## 💻 Lokal Geliştirme
+
+Projeyi bilgisayarınızda çalıştırmak için:
+
+```bash
+# Basit HTTP server başlatın (Python 3)
+python -m http.server 8000
+
+# Veya Node.js ile
+npx http-server -p 8000
+
+# Tarayıcıda açın
+http://localhost:8000
 ```
-katilkim/
-├── fxmanifest.lua          # FiveM manifest
-├── config.lua              # Oyun ayarları
-├── client/
-│   └── main.lua           # Client-side logic
-├── server/
-│   └── main.lua           # Server-side logic (lobby, oyun mekanikleri)
-└── html/
-    ├── index.html         # UI yapısı
-    ├── style.css          # Modern styling
-    └── app.js             # Frontend logic (LocalStorage tabanlı)
+
+## 📁 Proje Yapısı
+
+```
+rina-oyun/
+├── index.html      # Ana oyun dosyası
+├── style.css       # Stil dosyası
+├── app.js          # Oyun mantığı
+└── README.md       # Bu dosya
 ```
 
-### Teknolojiler
-- **FiveM**: Lua server/client
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Storage**: LocalStorage (SQL yok!)
-- **Font**: Google Fonts (Poppins)
+## 💡 İpuçları
+
+- 🤫 Rolünüzü çok erken açıklamayın
+- 👀 Oyuncuların davranışlarını gözlemleyin
+- 🗣️ Tartışma fazında aktif olun
+- 🤝 Takım arkadaşlarınızla işbirliği yapın
+- 🎭 Blöf yapmaktan korkmayın
+
+## 🔧 Teknik Detaylar
+
+- **Frontend:** Vanilla JavaScript (Framework yok)
+- **Stil:** CSS3 (Gradient + Animasyonlar)
+- **Veri:** LocalStorage API
+- **Multiplayer:** Peer-to-peer lobby sistemi
+- **Responsive:** Mobile-first tasarım
 
 ## 🎨 Özelleştirme
 
-### Renkleri Değiştir
-[`html/style.css`](html/style.css) dosyasında CSS değişkenlerini düzenleyin:
+[`config`](app.js:3) değişkenlerini düzenleyerek oyun ayarlarını değiştirebilirsiniz:
 
-```css
-/* Mafia rengi */
-background: linear-gradient(135deg, #f5576c 0%, #8b0000 100%);
-
-/* Village rengi */
-background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+```javascript
+const config = {
+    minPlayers: 5,        // Minimum oyuncu sayısı
+    maxPlayers: 15,       // Maximum oyuncu sayısı
+    nightTime: 30,        // Gece fazı süresi (saniye)
+    discussionTime: 120,  // Tartışma süresi (saniye)
+    votingTime: 60        // Oylama süresi (saniye)
+};
 ```
 
-### Rol Sayıları
-[`config.lua`](config.lua) veya [`html/app.js`](html/app.js:656) içindeki `assignRoles()` fonksiyonunu düzenleyin.
+## 📱 FiveM Entegrasyonu
 
-## 📱 Telefon Scriptleri ile Entegrasyon
-
-Popüler telefon scriptlerine entegre edebilirsiniz:
-
-### qb-phone
-```lua
--- qb-phone/config.lua içine ekleyin
-['katilkim'] = {
-    app = 'katilkim',
-    color = '#f5576c',
-    icon = '🔪',
-    tooltipText = 'Katil Kim?',
-    job = false,
-    blockedjobs = {},
-    slot = 15,
-}
-```
-
-### gcphone
-```lua
--- gcphone/html/static/config/config.js içine ekleyin
-{
-    id: 'katilkim',
-    title: 'Katil Kim?',
-    icon: '/html/static/img/icons_app/katilkim.png',
-    color: '#f5576c'
-}
-```
-
-## 🐛 Bilinen Sorunlar
-
-- [ ] Oyuncu lobby'den ayrılınca otomatik temizlenme
-- [ ] Mobil tarayıcılarda landscape mode desteği
-- [ ] Çoklu dil desteği
+Bu oyun aynı zamanda FiveM telefon uygulaması olarak da kullanılabilir. FiveM versiyonu için ayrı branch'e bakın.
 
 ## 🤝 Katkıda Bulunma
 
-Pull request'ler kabul edilir! Büyük değişiklikler için önce issue açın.
+Pull request'ler memnuniyetle karşılanır! Büyük değişiklikler için önce bir issue açın.
 
 ## 📄 Lisans
 
-Bu proje MIT lisansı ile lisanslanmıştır.
+MIT License - İstediğiniz gibi kullanabilirsiniz!
 
-## 💰 Ticari Kullanım
+## 🎮 Keyifli Oyunlar!
 
-Bu script **ticari olarak satılabilir**. İyi şanslar! 🚀
-
-## 📞 Destek
-
-- Discord: [Sunucunuz]
-- Tebrik.gg: [Linkiniz]
-- GitHub Issues: Bug raporları için
-
-## 🎉 Özellikler (Roadmap)
-
-- [ ] Ses efektleri
-- [ ] Özel roller (Joker, Şerif, vb.)
-- [ ] İstatistik sistemi
-- [ ] Achievement sistemi
-- [ ] Spectator modu
-- [ ] Replay sistemi
-- [ ] Turnuva modu
+Oyunu beğendiyseniz ⭐ vermeyi unutmayın!
 
 ---
 
-**Made with ❤️ by Rina Oyun**
-
-Eğlenceli oyunlar! 🎮🔪
+**Yapımcı:** Rina Oyun  
+**Versiyon:** 1.0.0  
+**İletişim:** GitHub Issues
