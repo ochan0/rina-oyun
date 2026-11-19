@@ -851,3 +851,66 @@ p {
         font-size: 14px;
     }
 }
+
+/* Character Customization */
+.character-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 32px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+#character-canvas {
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: white;
+}
+
+.customization-section {
+    margin-bottom: 24px;
+}
+
+.customization-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.option-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+}
+
+.option-btn {
+    padding: 10px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.option-btn:hover {
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+}
+
+.option-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.option-btn:active {
+    transform: scale(0.98);
+}

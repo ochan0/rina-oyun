@@ -1,54 +1,234 @@
-// Katil Kim - Cyberpunk Edition
-// LocalStorage tabanlı multiplayer sosyal dedüksiyon oyunu
+// Katil Kim - Game Logic
 
-// ============ Configuration ============
 const config = {
     minPlayers: 5,
     maxPlayers: 15,
     nightTime: 30,
     discussionTime: 120,
     votingTime: 60,
-    lobbyRefreshInterval: 3000, // 3 seconds
-    passwordAttempts: 3, // Max password attempts
-    passwordLockoutTime: 60000 // 1 minute lockout
+    lobbyRefreshInterval: 3000,
+    passwordAttempts: 3,
+    passwordLockoutTime: 60000
 };
 
-// ============ Global State ============
-let currentScreen = 'main-menu';
-let username = '';
-let lobbyCode = '';
-let currentRole = null;
-let currentPhase = null;
-let gameData = null;
-let timerInterval = null;
-let selectedTarget = null;
-let hasVoted = false;
-let isHost = false;
-let lobbyRefreshTimer = null;
-let pendingLobbyJoin = null;
+let gameState = {
+    username: '',
+    lobbyCode: '',
+    character: {
+        gender: 'male',
+        hat: 'none',
+        top: 'tshirt',
+        bottom: 'jeans'
+    }
+};
+
+let selectedLobbyCode = '';
 let passwordAttemptCount = 0;
 let passwordLockoutUntil = 0;
+let lobbyRefreshTimer = null;
+let gameTimer = null;
 
-// ============ Utility Functions ============
-function showScreen(screenId) {
-    const screens = document.querySelectorAll('.screen');
-    screens.forEach(screen => screen.classList.remove('active'));
+// Character Drawing
+function drawCharacter() {
+    const canvas = document.getElementById('character-canvas');
+    if (!canvas) return;
     
-    const targetScreen = document.getElementById(screenId);
-    if (targetScreen) {
-        targetScreen.classList.add('active');
-        currentScreen = screenId;
+    const ctx = canvas.getContext('2d');
+    const char = gameState.character;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw body based on gender
+    ctx.fillStyle = char.gender === 'male' ? '#fbbf77' : '#ffcba4';
+    
+    // Head
+    ctx.beginPath();
+    ctx.arc(100, 80, 40, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(85, 75, 5, 0, Math.PI * 2);
+    ctx.arc(115, 75, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Mouth
+    ctx.beginPath();
+    ctx.arc(100, 90, 15, 0, Math.PI);
+    ctx.stroke();
+    
+    // Hat
+    if (char.hat !== 'none') {
+        ctx.fillStyle = getHatColor(char.hat);
+        ctx.beginPath();
+        
+        if (char.hat === 'cap') {
+            ctx.fillRect(70, 35, 60, 10);
+            ctx.fillRect(100, 25, 40, 15);
+        } else if (char.hat === 'beanie') {
+            ctx.arc(100, 40, 45, Math.PI, 0, true);
+            ctx.fill();
+        } else if (char.hat === 'fedora') {
+            ctx.fillRect(60, 35, 80, 5);
+            ctx.fillRect(75, 25, 50, 15);
+        }
     }
+    
+    // Body
+    ctx.fillStyle = getClothingColor(char.top);
+    ctx.fillRect(60, 120, 80, 100);
+    
+    // Legs
+    ctx.fillStyle = getClothingColor(char.bottom);
+    ctx.fillRect(65, 220, 30, 70);
+    ctx.fillRect(105, 220, 30, 70);
+}
+
+function getHatColor(hat) {
+    const colors = { cap: '#e74c3c', beanie: '#3498db', fedora: '#2c3e50' };
+    return colors[hat] || '#000';
+}
+
+function getClothingColor(clothing) {
+    const colors = {
+        tshirt: '#3498db',
+        hoodie: '#e74c3c',
+        jacket: '#2c3e50',
+        suit: '#34495e',
+        jeans: '#2980b9',
+        shorts: '#95a5a6',
+        skirt: '#e91e63'
+    };
+    return colors[clothing] || '#000';
+}
+
+function updateCharacter(type, value) {
+    gameState.character[type] = value;
+    
+    // Update active button
+    const buttons = document.querySelectorAll(`[data-type="${type}"]`);
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.value === value) {
+            btn.classList.add('active');
+        }
+    });
+    
+    drawCharacter();
+}
+
+function saveCharacter() {
+    saveToLocalStorage('character', gameState.character);
+    showToast('Karakter kaydedildi!', 'success');
+    backToMenu();
+}
+
+function showCharacterCustomization() {
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) {
+        showToast('Kullanıcı adı giriniz', 'error');
+        return;
+    }
+    
+    gameState.username = username;
+    
+    // Load saved character
+    const savedChar = getFromLocalStorage('character');
+    if (savedChar) {
+        gameState.character = savedChar;
+    }
+    
+    showScreen('character-customization');
+    drawCharacter();
+    
+    // Set active buttons
+    Object.keys(gameState.character).forEach(type => {
+        const value = gameState.character[type];
+        const buttons = document.querySelectorAll(`[data-type="${type}"]`);
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.value === value) {
+                btn.classList.add('active');
+            }
+        });
+    });
+}
+
+// Demo Mode
+function startDemoMode() {
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) {
+        showToast('Kullanıcı adı giriniz', 'error');
+        return;
+    }
+    
+    gameState.username = username;
+    
+    // Create demo lobby
+    const code = 'DEMO00';
+    const botNames = ['Ali', 'Ayşe', 'Mehmet', 'Zeynep', 'Can', 'Elif', 'Burak', 'Deniz'];
+    const players = [
+        { name: username, ready: true, character: gameState.character }
+    ];
+    
+    // Add 4-7 random bots
+    const botCount = Math.floor(Math.random() * 4) + 4;
+    for (let i = 0; i < botCount && i < botNames.length; i++) {
+        players.push({
+            name: botNames[i],
+            ready: true,
+            isBot: true,
+            character: generateRandomCharacter()
+        });
+    }
+    
+    const lobbyData = {
+        code: code,
+        host: username,
+        name: 'Demo Oyunu',
+        players: players,
+        createdAt: Date.now(),
+        isDemo: true
+    };
+    
+    gameState.lobbyCode = code;
+    saveToLocalStorage(`lobby_${code}`, lobbyData);
+    
+    showLobbyScreen(code);
+    
+    // Auto start after 2 seconds
+    setTimeout(() => {
+        startGame();
+    }, 2000);
+}
+
+function generateRandomCharacter() {
+    const genders = ['male', 'female'];
+    const hats = ['none', 'cap', 'beanie', 'fedora'];
+    const tops = ['tshirt', 'hoodie', 'jacket', 'suit'];
+    const bottoms = ['jeans', 'shorts', 'skirt', 'suit'];
+    
+    return {
+        gender: genders[Math.floor(Math.random() * genders.length)],
+        hat: hats[Math.floor(Math.random() * hats.length)],
+        top: tops[Math.floor(Math.random() * tops.length)],
+        bottom: bottoms[Math.floor(Math.random() * bottoms.length)]
+    };
+}
+
+// UI Functions
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
 }
 
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.className = `toast show ${type}`;
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    toast.className = `toast ${type} show`;
+    setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 function saveToLocalStorage(key, value) {
@@ -61,76 +241,64 @@ function saveToLocalStorage(key, value) {
 
 function getFromLocalStorage(key) {
     try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : null;
     } catch (e) {
         console.error('LocalStorage error:', e);
         return null;
     }
 }
 
-function getUsernameFromStorage() {
-    return getFromLocalStorage('katilkim_username') || '';
-}
-
-function saveUsernameToStorage(name) {
-    saveToLocalStorage('katilkim_username', name);
-}
-
 function generateLobbyCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     
-    // Check if code already exists
-    if (getFromLocalStorage('lobby_' + code)) {
-        return generateLobbyCode(); // Recursive until unique
+    // Check if code exists
+    if (getFromLocalStorage(`lobby_${code}`)) {
+        return generateLobbyCode();
     }
     
     return code;
 }
 
 function getAllLobbies() {
+    cleanupOldLobbies();
     const lobbies = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('lobby_')) {
-            const lobby = getFromLocalStorage(key);
-            if (lobby && lobby.status === 'waiting') {
-                const code = key.replace('lobby_', '');
-                lobbies.push({ code, ...lobby });
-            }
-        }
-    }
-    return lobbies;
-}
-
-function cleanupOldLobbies() {
-    const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes
     
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('lobby_')) {
+        if (key.startsWith('lobby_')) {
             const lobby = getFromLocalStorage(key);
-            if (lobby && lobby.createdAt && (now - lobby.createdAt > maxAge)) {
+            if (lobby && !lobby.isDemo) {
+                lobbies.push(lobby);
+            }
+        }
+    }
+    
+    return lobbies.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function cleanupOldLobbies() {
+    const maxAge = 30 * 60 * 1000; // 30 minutes
+    const now = Date.now();
+    
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('lobby_')) {
+            const lobby = getFromLocalStorage(key);
+            if (lobby && now - lobby.createdAt > maxAge) {
                 localStorage.removeItem(key);
             }
         }
     }
 }
 
-// ============ Navigation Functions ============
+// Menu Functions
 function showMainMenu() {
     showScreen('main-menu');
-    const savedUsername = getUsernameFromStorage();
-    if (savedUsername) {
-        document.getElementById('username-input').value = savedUsername;
-    }
-    
-    // Stop lobby refresh timer
     if (lobbyRefreshTimer) {
         clearInterval(lobbyRefreshTimer);
         lobbyRefreshTimer = null;
@@ -138,179 +306,117 @@ function showMainMenu() {
 }
 
 function showCreateLobby() {
-    const usernameInput = document.getElementById('username-input');
-    const name = usernameInput.value.trim();
-    
-    if (!name) {
-        showToast('Lütfen kullanıcı adı girin!', 'error');
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) {
+        showToast('Kullanıcı adı giriniz', 'error');
         return;
     }
     
-    if (name.length < 3) {
-        showToast('Kullanıcı adı en az 3 karakter olmalı!', 'error');
-        return;
-    }
-    
-    username = name;
-    saveUsernameToStorage(username);
+    gameState.username = username;
     showScreen('create-lobby-screen');
 }
 
 function togglePasswordField() {
     const checkbox = document.getElementById('private-lobby-checkbox');
-    const passwordField = document.getElementById('password-field');
-    passwordField.style.display = checkbox.checked ? 'block' : 'none';
+    const field = document.getElementById('password-field');
+    field.style.display = checkbox.checked ? 'block' : 'none';
 }
 
 function createLobby() {
-    const lobbyNameInput = document.getElementById('lobby-name-input');
-    const lobbyName = lobbyNameInput.value.trim() || `${username}'in Lobbisi`;
-    
+    const lobbyName = document.getElementById('lobby-name-input').value.trim() || `${gameState.username}'ın Odası`;
     const isPrivate = document.getElementById('private-lobby-checkbox').checked;
-    let password = null;
+    const password = isPrivate ? document.getElementById('lobby-password-input').value.trim() : '';
     
-    if (isPrivate) {
-        const passwordInput = document.getElementById('lobby-password-input');
-        password = passwordInput.value.trim();
-        
-        if (!password) {
-            showToast('Şifreli lobby için şifre giriniz!', 'error');
-            return;
-        }
-        
-        if (password.length < 4) {
-            showToast('Şifre en az 4 karakter olmalı!', 'error');
-            return;
-        }
+    if (isPrivate && !password) {
+        showToast('Şifre giriniz', 'error');
+        return;
     }
     
     const code = generateLobbyCode();
-    lobbyCode = code;
-    isHost = true;
-    
     const lobbyData = {
+        code: code,
+        host: gameState.username,
         name: lobbyName,
-        host: username,
-        password: password,
-        players: [{ name: username, ready: false, isHost: true }],
-        status: 'waiting',
+        password: password || null,
+        players: [{
+            name: gameState.username,
+            ready: false,
+            character: gameState.character
+        }],
         createdAt: Date.now()
     };
     
-    saveToLocalStorage('lobby_' + code, lobbyData);
+    gameState.lobbyCode = code;
+    saveToLocalStorage(`lobby_${code}`, lobbyData);
+    
     showLobbyScreen(code);
-    showToast('Lobby oluşturuldu! 🎮', 'success');
 }
 
 function showLobbyBrowser() {
-    const usernameInput = document.getElementById('username-input');
-    const name = usernameInput.value.trim();
-    
-    if (!name) {
-        showToast('Lütfen kullanıcı adı girin!', 'error');
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) {
+        showToast('Kullanıcı adı giriniz', 'error');
         return;
     }
     
-    if (name.length < 3) {
-        showToast('Kullanıcı adı en az 3 karakter olmalı!', 'error');
-        return;
-    }
-    
-    username = name;
-    saveUsernameToStorage(username);
-    
+    gameState.username = username;
     showScreen('lobby-browser-screen');
-    cleanupOldLobbies();
     refreshLobbyList();
     
-    // Auto-refresh lobbies
+    // Auto refresh
+    if (lobbyRefreshTimer) clearInterval(lobbyRefreshTimer);
     lobbyRefreshTimer = setInterval(refreshLobbyList, config.lobbyRefreshInterval);
 }
 
 function refreshLobbyList() {
     const lobbies = getAllLobbies();
-    const lobbyList = document.getElementById('lobby-list');
+    const listContainer = document.getElementById('lobby-list');
     const emptyState = document.getElementById('empty-lobbies');
     
     if (lobbies.length === 0) {
-        lobbyList.innerHTML = '';
+        listContainer.innerHTML = '';
         emptyState.style.display = 'block';
         return;
     }
     
     emptyState.style.display = 'none';
-    lobbyList.innerHTML = '';
+    listContainer.innerHTML = '';
     
     lobbies.forEach(lobby => {
         const card = document.createElement('div');
         card.className = 'lobby-card';
         card.onclick = () => selectLobby(lobby.code, !!lobby.password);
         
-        const lockIcon = lobby.password ? '<span class="lobby-lock">🔒</span>' : '';
+        const lockIcon = lobby.password ? ' 🔒' : '';
         
         card.innerHTML = `
             <div class="lobby-header">
                 <span class="lobby-code">${lobby.code}</span>
-                ${lockIcon}
+                ${lockIcon ? `<span class="lobby-lock">${lockIcon}</span>` : ''}
             </div>
             <div class="lobby-info">
-                <span class="lobby-host">👑 ${lobby.name || lobby.host}</span>
-                <span class="lobby-players">👥 ${lobby.players.length}/${config.maxPlayers}</span>
+                <span class="lobby-host">${lobby.name || lobby.host}</span>
+                <span class="lobby-players">${lobby.players.length}/${config.maxPlayers}</span>
             </div>
         `;
         
-        lobbyList.appendChild(card);
+        listContainer.appendChild(card);
     });
 }
 
 function searchLobbies() {
-    const searchInput = document.getElementById('lobby-search-input');
-    const searchTerm = searchInput.value.trim().toLowerCase();
+    const search = document.getElementById('lobby-search-input').value.toLowerCase();
+    const cards = document.querySelectorAll('.lobby-card');
     
-    const lobbies = getAllLobbies();
-    const lobbyList = document.getElementById('lobby-list');
-    const emptyState = document.getElementById('empty-lobbies');
-    
-    const filtered = lobbies.filter(lobby => {
-        return lobby.code.toLowerCase().includes(searchTerm) ||
-               lobby.name.toLowerCase().includes(searchTerm) ||
-               lobby.host.toLowerCase().includes(searchTerm);
-    });
-    
-    if (filtered.length === 0) {
-        lobbyList.innerHTML = '';
-        emptyState.style.display = 'block';
-        return;
-    }
-    
-    emptyState.style.display = 'none';
-    lobbyList.innerHTML = '';
-    
-    filtered.forEach(lobby => {
-        const card = document.createElement('div');
-        card.className = 'lobby-card';
-        card.onclick = () => selectLobby(lobby.code, !!lobby.password);
-        
-        const lockIcon = lobby.password ? '<span class="lobby-lock">🔒</span>' : '';
-        
-        card.innerHTML = `
-            <div class="lobby-header">
-                <span class="lobby-code">${lobby.code}</span>
-                ${lockIcon}
-            </div>
-            <div class="lobby-info">
-                <span class="lobby-host">👑 ${lobby.name || lobby.host}</span>
-                <span class="lobby-players">👥 ${lobby.players.length}/${config.maxPlayers}</span>
-            </div>
-        `;
-        
-        lobbyList.appendChild(card);
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(search) ? 'block' : 'none';
     });
 }
 
 function selectLobby(code, requiresPassword) {
     if (requiresPassword) {
-        pendingLobbyJoin = code;
+        selectedLobbyCode = code;
         openPasswordModal();
     } else {
         joinLobby(code);
@@ -318,7 +424,20 @@ function selectLobby(code, requiresPassword) {
 }
 
 function openPasswordModal() {
-    // Check lockout
+    const modal = document.getElementById('password-modal');
+    modal.classList.add('active');
+    document.getElementById('password-input').value = '';
+    document.getElementById('password-error').style.display = 'none';
+}
+
+function closePasswordModal() {
+    const modal = document.getElementById('password-modal');
+    modal.classList.remove('active');
+    selectedLobbyCode = '';
+    passwordAttemptCount = 0;
+}
+
+function submitPassword() {
     const now = Date.now();
     if (now < passwordLockoutUntil) {
         const remainingSeconds = Math.ceil((passwordLockoutUntil - now) / 1000);
@@ -326,78 +445,64 @@ function openPasswordModal() {
         return;
     }
     
-    const modal = document.getElementById('password-modal');
-    const input = document.getElementById('password-input');
-    const errorMsg = document.getElementById('password-error');
-    
-    input.value = '';
-    errorMsg.style.display = 'none';
-    modal.classList.add('active');
-}
-
-function closePasswordModal() {
-    const modal = document.getElementById('password-modal');
-    modal.classList.remove('active');
-    pendingLobbyJoin = null;
-}
-
-function submitPassword() {
-    const input = document.getElementById('password-input');
-    const password = input.value.trim();
-    const errorMsg = document.getElementById('password-error');
-    
-    if (!password) {
-        errorMsg.textContent = 'Şifre giriniz!';
-        errorMsg.style.display = 'block';
-        return;
-    }
-    
-    const lobbyData = getFromLocalStorage('lobby_' + pendingLobbyJoin);
+    const password = document.getElementById('password-input').value;
+    const lobbyData = getFromLocalStorage(`lobby_${selectedLobbyCode}`);
     
     if (!lobbyData) {
+        showToast('Oda bulunamadı', 'error');
         closePasswordModal();
-        showToast('Lobby bulunamadı!', 'error');
         return;
     }
     
     if (lobbyData.password !== password) {
         passwordAttemptCount++;
-        errorMsg.textContent = `Yanlış şifre! (${passwordAttemptCount}/${config.passwordAttempts})`;
-        errorMsg.style.display = 'block';
         
         if (passwordAttemptCount >= config.passwordAttempts) {
             passwordLockoutUntil = Date.now() + config.passwordLockoutTime;
             passwordAttemptCount = 0;
-            closePasswordModal();
             showToast('Çok fazla yanlış deneme! 1 dakika beklemelisiniz.', 'error');
+            closePasswordModal();
+        } else {
+            const errorMsg = document.getElementById('password-error');
+            errorMsg.textContent = `Yanlış şifre! (${passwordAttemptCount}/${config.passwordAttempts})`;
+            errorMsg.style.display = 'block';
         }
         return;
     }
     
-    // Password correct
     passwordAttemptCount = 0;
     closePasswordModal();
-    joinLobby(pendingLobbyJoin);
+    joinLobby(selectedLobbyCode);
 }
 
-function joinLobbyByCode() {
-    const codeInput = document.getElementById('lobby-code-input');
-    const code = codeInput.value.trim().toUpperCase();
-    
-    if (!code || code.length !== 6) {
-        showToast('Geçerli bir lobby kodu girin!', 'error');
+function showJoinLobby() {
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) {
+        showToast('Kullanıcı adı giriniz', 'error');
         return;
     }
     
-    const lobbyData = getFromLocalStorage('lobby_' + code);
+    gameState.username = username;
+    showScreen('join-lobby-screen');
+}
+
+function joinLobbyByCode() {
+    const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+    
+    if (code.length !== 6) {
+        showToast('Geçersiz kod', 'error');
+        return;
+    }
+    
+    const lobbyData = getFromLocalStorage(`lobby_${code}`);
     
     if (!lobbyData) {
-        showToast('Lobby bulunamadı!', 'error');
+        showToast('Oda bulunamadı', 'error');
         return;
     }
     
     if (lobbyData.password) {
-        pendingLobbyJoin = code;
+        selectedLobbyCode = code;
         openPasswordModal();
     } else {
         joinLobby(code);
@@ -405,230 +510,200 @@ function joinLobbyByCode() {
 }
 
 function joinLobby(code) {
-    const lobbyData = getFromLocalStorage('lobby_' + code);
+    const lobbyData = getFromLocalStorage(`lobby_${code}`);
     
     if (!lobbyData) {
-        showToast('Lobby bulunamadı!', 'error');
-        return;
-    }
-    
-    if (lobbyData.status !== 'waiting') {
-        showToast('Bu oyun zaten başlamış!', 'error');
+        showToast('Oda bulunamadı', 'error');
         return;
     }
     
     if (lobbyData.players.length >= config.maxPlayers) {
-        showToast('Lobby dolu!', 'error');
+        showToast('Oda dolu', 'error');
         return;
     }
     
-    // Check if already in lobby
-    const existingPlayer = lobbyData.players.find(p => p.name === username);
+    const existingPlayer = lobbyData.players.find(p => p.name === gameState.username);
+    
     if (!existingPlayer) {
-        lobbyData.players.push({ name: username, ready: false, isHost: false });
-        saveToLocalStorage('lobby_' + code, lobbyData);
+        lobbyData.players.push({
+            name: gameState.username,
+            ready: false,
+            character: gameState.character
+        });
+        saveToLocalStorage(`lobby_${code}`, lobbyData);
     }
     
-    lobbyCode = code;
-    isHost = false;
+    gameState.lobbyCode = code;
     showLobbyScreen(code);
-    showToast('Lobby\'ye katıldın! 🎮', 'success');
-}
-
-function showHowToPlay() {
-    showScreen('how-to-play-screen');
 }
 
 function leaveLobby() {
-    if (lobbyCode) {
-        const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-        if (lobbyData) {
-            // Remove player
-            lobbyData.players = lobbyData.players.filter(p => p.name !== username);
-            
-            // If host left, delete lobby or assign new host
-            if (isHost) {
-                if (lobbyData.players.length > 0) {
-                    lobbyData.players[0].isHost = true;
-                    lobbyData.host = lobbyData.players[0].name;
-                    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-                } else {
-                    localStorage.removeItem('lobby_' + lobbyCode);
-                }
-            } else {
-                saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    
+    if (lobbyData) {
+        lobbyData.players = lobbyData.players.filter(p => p.name !== gameState.username);
+        
+        if (lobbyData.players.length === 0) {
+            localStorage.removeItem(`lobby_${gameState.lobbyCode}`);
+        } else {
+            if (lobbyData.host === gameState.username) {
+                lobbyData.host = lobbyData.players[0].name;
             }
+            saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
         }
     }
     
-    lobbyCode = '';
-    isHost = false;
-    showMainMenu();
+    gameState.lobbyCode = '';
+    backToMenu();
 }
 
 function backToMenu() {
-    gameData = null;
-    currentRole = null;
-    currentPhase = null;
-    hasVoted = false;
-    selectedTarget = null;
-    
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
+    gameState.lobbyCode = '';
+    if (lobbyRefreshTimer) {
+        clearInterval(lobbyRefreshTimer);
+        lobbyRefreshTimer = null;
     }
-    
+    if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
+    }
     showMainMenu();
 }
 
-// ============ Lobby Functions ============
+// Lobby Screen
 function showLobbyScreen(code) {
-    lobbyCode = code;
-    const lobbyData = getFromLocalStorage('lobby_' + code);
-    
-    if (lobbyData) {
-        document.getElementById('lobby-title').textContent = lobbyData.name || 'Lobby';
-        document.getElementById('lobby-code-text').textContent = code;
-    }
-    
     showScreen('lobby-screen');
     updateLobbyDisplay();
     
-    // Auto-refresh lobby
     if (lobbyRefreshTimer) clearInterval(lobbyRefreshTimer);
     lobbyRefreshTimer = setInterval(updateLobbyDisplay, 1000);
 }
 
 function updateLobbyDisplay() {
-    if (!lobbyCode) return;
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
     
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
     if (!lobbyData) {
-        showToast('Lobby kapandı!', 'error');
-        leaveLobby();
+        showToast('Oda bulunamadı', 'error');
+        backToMenu();
         return;
     }
     
-    // Check if user is still in lobby
-    const currentPlayer = lobbyData.players.find(p => p.name === username);
-    if (!currentPlayer) {
-        showToast('Lobbyden çıkarıldınız!', 'error');
-        leaveLobby();
-        return;
-    }
+    document.getElementById('lobby-title').textContent = lobbyData.name || lobbyData.code;
+    document.getElementById('lobby-subtitle').textContent = `Host: ${lobbyData.host}`;
+    document.getElementById('lobby-code-text').textContent = lobbyData.code;
+    document.getElementById('lobby-player-count').textContent = `${lobbyData.players.length}/${config.maxPlayers} Oyuncu`;
     
-    // Update player count
-    document.getElementById('player-count').textContent = `${lobbyData.players.length}/${config.maxPlayers}`;
-    
-    // Update player list
-    const playersList = document.getElementById('players-list');
-    playersList.innerHTML = '';
+    const playerList = document.getElementById('lobby-player-list');
+    playerList.innerHTML = '';
     
     lobbyData.players.forEach(player => {
-        const playerItem = document.createElement('div');
-        playerItem.className = 'player-item';
+        const item = document.createElement('div');
+        item.className = 'player-item';
         
-        let badge = '';
-        if (player.isHost) {
-            badge = '<span class="player-badge badge-host">HOST</span>';
+        let statusBadge = '';
+        if (player.name === lobbyData.host) {
+            statusBadge = '<span class="player-status host">Host</span>';
         } else if (player.ready) {
-            badge = '<span class="player-badge badge-ready">HAZIR</span>';
+            statusBadge = '<span class="player-status ready">Hazır</span>';
         } else {
-            badge = '<span class="player-badge badge-waiting">BEKLİYOR</span>';
+            statusBadge = '<span class="player-status waiting">Bekliyor</span>';
         }
         
-        playerItem.innerHTML = `
+        item.innerHTML = `
             <span class="player-name">${player.name}</span>
-            ${badge}
+            ${statusBadge}
         `;
         
-        playersList.appendChild(playerItem);
+        playerList.appendChild(item);
     });
     
-    // Update ready button
+    const currentPlayer = lobbyData.players.find(p => p.name === gameState.username);
     const readyBtn = document.getElementById('ready-btn');
-    if (currentPlayer.ready) {
-        readyBtn.innerHTML = '<span>✅</span> Hazır';
-        readyBtn.classList.remove('btn-secondary');
-        readyBtn.classList.add('btn-primary');
-    } else {
-        readyBtn.innerHTML = '<span>✋</span> Hazırım';
-        readyBtn.classList.remove('btn-primary');
-        readyBtn.classList.add('btn-secondary');
+    const startBtn = document.getElementById('start-game-btn');
+    
+    if (currentPlayer) {
+        readyBtn.textContent = currentPlayer.ready ? 'Hazır ✓' : 'Hazırım';
+        readyBtn.className = currentPlayer.ready ? 'btn btn-success' : 'btn btn-secondary';
     }
     
-    // Show start button only for host
-    const startBtn = document.getElementById('start-btn');
-    if (currentPlayer.isHost && lobbyData.players.length >= config.minPlayers) {
-        const allReady = lobbyData.players.every(p => p.ready || p.isHost);
-        startBtn.style.display = allReady ? 'block' : 'none';
+    if (lobbyData.host === gameState.username) {
+        const allReady = lobbyData.players.every(p => p.ready || p.name === lobbyData.host);
+        const enoughPlayers = lobbyData.players.length >= config.minPlayers;
+        
+        startBtn.style.display = allReady && enoughPlayers ? 'block' : 'none';
+        readyBtn.style.display = 'none';
     } else {
         startBtn.style.display = 'none';
-    }
-    
-    // Check if game started
-    if (lobbyData.status === 'playing') {
-        initializeGame();
+        readyBtn.style.display = 'block';
     }
 }
 
 function toggleReady() {
-    if (!lobbyCode) return;
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
     
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
     if (!lobbyData) return;
     
-    const currentPlayer = lobbyData.players.find(p => p.name === username);
-    if (!currentPlayer || currentPlayer.isHost) return;
-    
-    currentPlayer.ready = !currentPlayer.ready;
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-    updateLobbyDisplay();
+    const player = lobbyData.players.find(p => p.name === gameState.username);
+    if (player) {
+        player.ready = !player.ready;
+        saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+        updateLobbyDisplay();
+    }
 }
 
 function startGame() {
-    if (!lobbyCode || !isHost) return;
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
     
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
     if (!lobbyData) return;
     
-    if (lobbyData.players.length < config.minPlayers) {
-        showToast(`En az ${config.minPlayers} oyuncu gerekli!`, 'error');
+    if (lobbyData.host !== gameState.username && !lobbyData.isDemo) {
+        showToast('Sadece host oyunu başlatabilir', 'error');
         return;
     }
     
-    // Assign roles
+    if (lobbyData.players.length < config.minPlayers) {
+        showToast(`En az ${config.minPlayers} oyuncu gerekli`, 'error');
+        return;
+    }
+    
     const players = lobbyData.players.map(p => ({
         name: p.name,
-        role: null,
         alive: true,
-        protected: false
+        role: '',
+        character: p.character,
+        isBot: p.isBot || false
     }));
     
-    assignRoles(players);
+    const roles = assignRoles(players);
+    players.forEach((p, i) => p.role = roles[i]);
     
-    lobbyData.status = 'playing';
     lobbyData.game = {
         players: players,
-        round: 1,
         phase: 'night',
-        phaseEndTime: Date.now() + (config.nightTime * 1000),
+        round: 1,
+        phaseEndTime: Date.now() + config.nightTime * 1000,
         nightActions: {},
-        votes: {},
-        events: []
+        votes: {}
     };
     
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    
+    if (lobbyRefreshTimer) {
+        clearInterval(lobbyRefreshTimer);
+        lobbyRefreshTimer = null;
+    }
+    
     initializeGame();
 }
 
 function assignRoles(players) {
-    const totalPlayers = players.length;
-    const killerCount = Math.max(1, Math.floor(totalPlayers / 5));
-    const hasDetective = totalPlayers >= 7;
-    const hasDoctor = totalPlayers >= 9;
-    
+    const count = players.length;
     const roles = [];
+    
+    // Calculate roles
+    const killerCount = Math.floor(count / 5);
+    const hasDetective = count >= 7;
+    const hasDoctor = count >= 9;
     
     // Add killers
     for (let i = 0; i < killerCount; i++) {
@@ -640,7 +715,7 @@ function assignRoles(players) {
     if (hasDoctor) roles.push('doctor');
     
     // Fill rest with villagers
-    while (roles.length < totalPlayers) {
+    while (roles.length < count) {
         roles.push('villager');
     }
     
@@ -650,84 +725,66 @@ function assignRoles(players) {
         [roles[i], roles[j]] = [roles[j], roles[i]];
     }
     
-    // Assign to players
-    players.forEach((player, index) => {
-        player.role = roles[index];
-    });
+    return roles;
 }
 
-// ============ Game Functions ============
 function initializeGame() {
-    if (lobbyRefreshTimer) {
-        clearInterval(lobbyRefreshTimer);
-        lobbyRefreshTimer = null;
-    }
-    
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-    if (!lobbyData || !lobbyData.game) return;
-    
-    gameData = lobbyData.game;
-    const player = gameData.players.find(p => p.name === username);
-    if (!player) return;
-    
-    currentRole = player.role;
     showScreen('game-screen');
     updateGameDisplay();
     
-    // Start game loop
-    if (lobbyRefreshTimer) clearInterval(lobbyRefreshTimer);
-    lobbyRefreshTimer = setInterval(gameLoop, 1000);
+    if (gameTimer) clearInterval(gameTimer);
+    gameTimer = setInterval(() => {
+        updateTimer();
+        gameLoop();
+    }, 1000);
 }
 
 function updateGameDisplay() {
-    if (!gameData) return;
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
     
-    const player = gameData.players.find(p => p.name === username);
+    const game = lobbyData.game;
+    const player = game.players.find(p => p.name === gameState.username);
+    
     if (!player) return;
     
     // Update role card
-    const roleInfo = getRoleInfo(currentRole);
-    document.getElementById('role-icon').textContent = roleInfo.icon;
+    const roleInfo = getRoleInfo(player.role);
     document.getElementById('role-name').textContent = roleInfo.name;
     document.getElementById('role-description').textContent = roleInfo.description;
     
-    // Update round
-    document.getElementById('round-number').textContent = gameData.round;
-    
     // Update phase
-    updatePhaseDisplay();
+    document.getElementById('phase-name').textContent = game.phase === 'night' ? 'Gece' : game.phase === 'discussion' ? 'Tartışma' : 'Oylama';
     
     // Update stats
-    const aliveCount = gameData.players.filter(p => p.alive).length;
-    const deadCount = gameData.players.length - aliveCount;
-    document.getElementById('alive-count').textContent = aliveCount;
-    document.getElementById('dead-count').textContent = deadCount;
+    const aliveVillagers = game.players.filter(p => p.alive && p.role !== 'killer').length;
+    const aliveKillers = game.players.filter(p => p.alive && p.role === 'killer').length;
     
-    // Update timer
-    updateTimer();
+    document.getElementById('villagers-alive').textContent = aliveVillagers;
+    document.getElementById('killers-alive').textContent = aliveKillers;
+    document.getElementById('round-number').textContent = game.round;
+    
+    // Update phase display
+    updatePhaseDisplay();
 }
 
 function getRoleInfo(role) {
     const roles = {
         killer: {
-            icon: '🔪',
-            name: 'Katil',
-            description: 'Her gece bir kişiyi öldür. Tüm köylüleri öldür ve kazan!'
+            name: '🔪 Katil',
+            description: 'Gece vakti bir köylü öldür. Amacın köylü sayısını kendi sayına eşitlemek.'
         },
         detective: {
-            icon: '🕵️',
-            name: 'Dedektif',
-            description: 'Her gece bir kişinin rolünü öğren. Katilleri bul!'
+            name: '🔍 Dedektif',
+            description: 'Gece vakti bir oyuncunun rolünü öğren. Katilleri bulup köylüleri kurtar.'
         },
         doctor: {
-            icon: '💉',
-            name: 'Doktor',
-            description: 'Her gece bir kişiyi koru. O gece öldürülemez.'
+            name: '💊 Doktor',
+            description: 'Gece vakti bir oyuncuyu koru. Katillerin saldırısından kurtarabilirsin.'
         },
         villager: {
-            icon: '👨‍🌾',
-            name: 'Köylü',
-            description: 'Tartışmalarda katilleri bulmaya çalış ve oyla!'
+            name: '👤 Köylü',
+            description: 'Tartışmalarda katili bul ve oylamaya katıl. Katilleri ortadan kaldır.'
         }
     };
     
@@ -735,320 +792,335 @@ function getRoleInfo(role) {
 }
 
 function updatePhaseDisplay() {
-    if (!gameData) return;
-    
-    const phaseIcon = document.getElementById('phase-icon');
-    const phaseText = document.getElementById('phase-text');
-    
-    // Hide all phase contents
     document.getElementById('night-content').style.display = 'none';
     document.getElementById('discussion-content').style.display = 'none';
     document.getElementById('voting-content').style.display = 'none';
     
-    const player = gameData.players.find(p => p.name === username);
-    if (!player || !player.alive) return;
-    
-    switch (gameData.phase) {
-        case 'night':
-            phaseIcon.textContent = '🌙';
-            phaseText.textContent = 'GECE';
-            if (['killer', 'detective', 'doctor'].includes(currentRole)) {
-                document.getElementById('night-content').style.display = 'block';
-                updateNightTargets();
-            }
-            break;
-            
-        case 'discussion':
-            phaseIcon.textContent = '💬';
-            phaseText.textContent = 'TARTIŞMA';
-            document.getElementById('discussion-content').style.display = 'block';
-            updateDiscussionDisplay();
-            break;
-            
-        case 'voting':
-            phaseIcon.textContent = '🗳️';
-            phaseText.textContent = 'OYLAMA';
-            document.getElementById('voting-content').style.display = 'block';
-            updateVotingDisplay();
-            break;
-    }
-}
-
-function updateNightTargets() {
-    const targetList = document.getElementById('night-target-list');
-    targetList.innerHTML = '';
-    
-    const alivePlayers = gameData.players.filter(p => p.alive && p.name !== username);
-    
-    alivePlayers.forEach(player => {
-        const btn = document.createElement('button');
-        btn.className = 'target-btn';
-        btn.onclick = () => selectNightTarget(player.name);
-        
-        const isSelected = selectedTarget === player.name;
-        if (isSelected) btn.classList.add('selected');
-        
-        let actionText = '';
-        switch (currentRole) {
-            case 'killer':
-                actionText = '🔪 Öldür';
-                break;
-            case 'detective':
-                actionText = '🔍 Araştır';
-                break;
-            case 'doctor':
-                actionText = '💉 Koru';
-                break;
-        }
-        
-        btn.innerHTML = `
-            <span>${player.name}</span>
-            <span>${actionText}</span>
-        `;
-        
-        targetList.appendChild(btn);
-    });
-}
-
-function selectNightTarget(targetName) {
-    selectedTarget = targetName;
-    updateNightTargets();
-    
-    // Submit action
-    submitNightAction(targetName);
-}
-
-function submitNightAction(targetName) {
-    if (!lobbyCode || !gameData) return;
-    
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-    if (!lobbyData || !lobbyData.game) return;
-    
-    lobbyData.game.nightActions[username] = {
-        role: currentRole,
-        target: targetName
-    };
-    
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-    showToast('Seçim kaydedildi! ✅', 'success');
-}
-
-function updateDiscussionDisplay() {
-    const discussionDiv = document.getElementById('alive-players-discussion');
-    discussionDiv.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">Oyuncularla konuş ve şüphelilerini belirle. Sonraki faz oylamadır.</p>';
-    
-    const alivePlayers = gameData.players.filter(p => p.alive);
-    alivePlayers.forEach(player => {
-        const playerDiv = document.createElement('div');
-        playerDiv.className = 'player-item';
-        playerDiv.innerHTML = `<span class="player-name">${player.name}</span>`;
-        discussionDiv.appendChild(playerDiv);
-    });
-}
-
-function updateVotingDisplay() {
-    const votingList = document.getElementById('voting-list');
-    votingList.innerHTML = '';
-    
-    const alivePlayers = gameData.players.filter(p => p.alive && p.name !== username);
-    
-    alivePlayers.forEach(player => {
-        const btn = document.createElement('button');
-        btn.className = 'vote-btn';
-        btn.onclick = () => submitVote(player.name);
-        
-        const hasVotedForPlayer = gameData.votes[username] === player.name;
-        if (hasVotedForPlayer) btn.classList.add('selected');
-        
-        const voteCount = Object.values(gameData.votes).filter(v => v === player.name).length;
-        
-        btn.innerHTML = `
-            <span>${player.name}</span>
-            <span>Oylar: ${voteCount}</span>
-        `;
-        
-        votingList.appendChild(btn);
-    });
-    
-    // Update vote count
-    const totalVotes = Object.keys(gameData.votes).length;
-    document.getElementById('vote-count').textContent = totalVotes;
-}
-
-function submitVote(targetName) {
-    if (!lobbyCode || !gameData) return;
-    
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-    if (!lobbyData || !lobbyData.game) return;
-    
-    lobbyData.game.votes[username] = targetName;
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-    
-    gameData = lobbyData.game;
-    updateVotingDisplay();
-    showToast('Oyun kaydedildi! ✅', 'success');
-}
-
-function updateTimer() {
-    if (!gameData) return;
-    
-    const now = Date.now();
-    const remaining = Math.max(0, Math.ceil((gameData.phaseEndTime - now) / 1000));
-    
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
-    document.getElementById('timer-text').textContent = 
-        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function gameLoop() {
-    if (!lobbyCode) return;
-    
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-    if (!lobbyData || !lobbyData.game) return;
-    
-    gameData = lobbyData.game;
-    const now = Date.now();
-    
-    // Check if phase ended
-    if (now >= gameData.phaseEndTime) {
-        processPhaseEnd();
-    } else {
-        updateGameDisplay();
-    }
-}
-
-function processPhaseEnd() {
-    if (!isHost) return; // Only host processes phase transitions
-    
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
     if (!lobbyData || !lobbyData.game) return;
     
     const game = lobbyData.game;
     
-    switch (game.phase) {
-        case 'night':
-            processNightActions(game);
-            game.phase = 'discussion';
-            game.phaseEndTime = Date.now() + (config.discussionTime * 1000);
-            game.nightActions = {};
-            selectedTarget = null;
-            break;
-            
-        case 'discussion':
-            game.phase = 'voting';
-            game.phaseEndTime = Date.now() + (config.votingTime * 1000);
-            game.votes = {};
-            hasVoted = false;
-            break;
-            
-        case 'voting':
-            processVoting(game);
-            
-            // Check win condition
-            const result = checkWinCondition(game);
-            if (result) {
-                endGame(result);
-                return;
-            }
-            
-            game.round++;
-            game.phase = 'night';
-            game.phaseEndTime = Date.now() + (config.nightTime * 1000);
-            game.votes = {};
-            selectedTarget = null;
-            hasVoted = false;
-            break;
+    if (game.phase === 'night') {
+        document.getElementById('night-content').style.display = 'block';
+        updateNightTargets();
+    } else if (game.phase === 'discussion') {
+        document.getElementById('discussion-content').style.display = 'block';
+    } else if (game.phase === 'voting') {
+        document.getElementById('voting-content').style.display = 'block';
+        updateVotingDisplay();
+    }
+}
+
+function updateNightTargets() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const game = lobbyData.game;
+    const player = game.players.find(p => p.name === gameState.username);
+    
+    if (!player || !player.alive) {
+        document.getElementById('night-title').textContent = 'Ölüsün';
+        document.getElementById('night-description').textContent = 'Oyunu izliyorsun...';
+        document.getElementById('night-targets').innerHTML = '';
+        return;
     }
     
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-    gameData = game;
+    const targets = game.players.filter(p => p.alive && p.name !== gameState.username);
+    const container = document.getElementById('night-targets');
+    container.innerHTML = '';
+    
+    if (player.role === 'killer') {
+        document.getElementById('night-title').textContent = 'Kurbanını Seç';
+        document.getElementById('night-description').textContent = 'Bir köylü seç ve öldür.';
+        
+        targets.forEach(target => {
+            const btn = document.createElement('button');
+            btn.className = 'target-item';
+            btn.textContent = target.name;
+            btn.onclick = () => submitNightAction(target.name);
+            container.appendChild(btn);
+        });
+    } else if (player.role === 'detective') {
+        document.getElementById('night-title').textContent = 'Araştır';
+        document.getElementById('night-description').textContent = 'Bir oyuncunun rolünü öğren.';
+        
+        targets.forEach(target => {
+            const btn = document.createElement('button');
+            btn.className = 'target-item';
+            btn.textContent = target.name;
+            btn.onclick = () => submitNightAction(target.name);
+            container.appendChild(btn);
+        });
+    } else if (player.role === 'doctor') {
+        document.getElementById('night-title').textContent = 'Koru';
+        document.getElementById('night-description').textContent = 'Bir oyuncuyu katillerden koru.';
+        
+        targets.forEach(target => {
+            const btn = document.createElement('button');
+            btn.className = 'target-item';
+            btn.textContent = target.name;
+            btn.onclick = () => submitNightAction(target.name);
+            container.appendChild(btn);
+        });
+    } else {
+        document.getElementById('night-title').textContent = 'Uyu';
+        document.getElementById('night-description').textContent = 'Sabahı bekle...';
+    }
+}
+
+function submitNightAction(targetName) {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    lobbyData.game.nightActions[gameState.username] = {
+        target: targetName,
+        timestamp: Date.now()
+    };
+    
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    showToast('Aksiyonun kaydedildi', 'success');
+    
+    document.querySelectorAll('.target-item').forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === targetName) {
+            btn.classList.add('selected');
+        }
+    });
+}
+
+function updateVotingDisplay() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const game = lobbyData.game;
+    const player = game.players.find(p => p.name === gameState.username);
+    
+    const targets = game.players.filter(p => p.alive);
+    const container = document.getElementById('voting-targets');
+    container.innerHTML = '';
+    
+    if (!player || !player.alive) {
+        container.innerHTML = '<p>Ölüsün, oylayamazsın</p>';
+        return;
+    }
+    
+    targets.forEach(target => {
+        const btn = document.createElement('button');
+        btn.className = 'target-item';
+        btn.textContent = target.name;
+        btn.onclick = () => submitVote(target.name);
+        
+        if (game.votes[gameState.username]) {
+            btn.disabled = true;
+            if (game.votes[gameState.username] === target.name) {
+                btn.classList.add('selected');
+            }
+        }
+        
+        container.appendChild(btn);
+    });
+}
+
+function submitVote(targetName) {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    lobbyData.game.votes[gameState.username] = targetName;
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+    
+    showToast('Oyun kaydedildi', 'success');
+    updateVotingDisplay();
+}
+
+function updateTimer() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const remaining = Math.max(0, Math.ceil((lobbyData.game.phaseEndTime - Date.now()) / 1000));
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    
+    document.getElementById('phase-timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function gameLoop() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    // Only host processes game logic
+    if (lobbyData.host !== gameState.username && !lobbyData.isDemo) {
+        updateGameDisplay();
+        return;
+    }
+    
+    const game = lobbyData.game;
+    
+    // Check if phase ended
+    if (Date.now() >= game.phaseEndTime) {
+        processPhaseEnd();
+    }
+    
+    // Bot actions in demo mode
+    if (lobbyData.isDemo) {
+        processBotActions();
+    }
+}
+
+function processBotActions() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const game = lobbyData.game;
+    
+    game.players.forEach(player => {
+        if (!player.isBot || !player.alive) return;
+        
+        if (game.phase === 'night' && !game.nightActions[player.name]) {
+            const targets = game.players.filter(p => p.alive && p.name !== player.name);
+            if (targets.length > 0 && (player.role === 'killer' || player.role === 'detective' || player.role === 'doctor')) {
+                const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+                game.nightActions[player.name] = {
+                    target: randomTarget.name,
+                    timestamp: Date.now()
+                };
+            }
+        }
+        
+        if (game.phase === 'voting' && !game.votes[player.name]) {
+            const targets = game.players.filter(p => p.alive);
+            if (targets.length > 0) {
+                const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+                game.votes[player.name] = randomTarget.name;
+            }
+        }
+    });
+    
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
+}
+
+function processPhaseEnd() {
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
+    
+    const game = lobbyData.game;
+    
+    if (game.phase === 'night') {
+        processNightActions(game);
+        game.phase = 'discussion';
+        game.phaseEndTime = Date.now() + config.discussionTime * 1000;
+        game.nightActions = {};
+    } else if (game.phase === 'discussion') {
+        game.phase = 'voting';
+        game.phaseEndTime = Date.now() + config.votingTime * 1000;
+        game.votes = {};
+    } else if (game.phase === 'voting') {
+        processVoting(game);
+        
+        const winner = checkWinCondition(game);
+        if (winner) {
+            endGame(winner);
+            return;
+        }
+        
+        game.phase = 'night';
+        game.round++;
+        game.phaseEndTime = Date.now() + config.nightTime * 1000;
+        game.votes = {};
+        game.nightActions = {};
+    }
+    
+    saveToLocalStorage(`lobby_${gameState.lobbyCode}`, lobbyData);
     updateGameDisplay();
 }
 
 function processNightActions(game) {
-    const killerTargets = [];
-    let savedTarget = null;
+    let victim = null;
+    let protected = null;
     const investigations = {};
     
-    // Collect actions
-    Object.entries(game.nightActions).forEach(([playerName, action]) => {
-        switch (action.role) {
-            case 'killer':
-                killerTargets.push(action.target);
-                break;
-            case 'doctor':
-                savedTarget = action.target;
-                break;
-            case 'detective':
-                investigations[playerName] = action.target;
-                break;
+    // Get killer targets
+    const killers = game.players.filter(p => p.role === 'killer' && p.alive);
+    killers.forEach(killer => {
+        const action = game.nightActions[killer.name];
+        if (action) {
+            victim = action.target;
         }
     });
     
-    // Process kills
-    if (killerTargets.length > 0) {
-        // Pick most common target (or random if tie)
-        const targetCounts = {};
-        killerTargets.forEach(t => {
-            targetCounts[t] = (targetCounts[t] || 0) + 1;
-        });
-        
-        const maxCount = Math.max(...Object.values(targetCounts));
-        const topTargets = Object.keys(targetCounts).filter(t => targetCounts[t] === maxCount);
-        const killedTarget = topTargets[Math.floor(Math.random() * topTargets.length)];
-        
-        // Check if saved
-        if (killedTarget !== savedTarget) {
-            const victim = game.players.find(p => p.name === killedTarget);
-            if (victim) {
-                victim.alive = false;
-                game.events.push(`💀 ${killedTarget} öldürüldü!`);
-            }
-        } else {
-            game.events.push(`💉 Birisi korundu!`);
+    // Get doctor protection
+    const doctors = game.players.filter(p => p.role === 'doctor' && p.alive);
+    doctors.forEach(doctor => {
+        const action = game.nightActions[doctor.name];
+        if (action) {
+            protected = action.target;
         }
+    });
+    
+    // Get detective investigations
+    const detectives = game.players.filter(p => p.role === 'detective' && p.alive);
+    detectives.forEach(detective => {
+        const action = game.nightActions[detective.name];
+        if (action) {
+            const target = game.players.find(p => p.name === action.target);
+            if (target) {
+                investigations[detective.name] = {
+                    target: action.target,
+                    role: target.role
+                };
+            }
+        }
+    });
+    
+    // Process kill
+    if (victim && victim !== protected) {
+        const player = game.players.find(p => p.name === victim);
+        if (player) {
+            player.alive = false;
+            showToast(`${victim} öldü!`, 'error');
+        }
+    } else if (victim === protected) {
+        showToast('Doktor birini korudu!', 'info');
     }
 }
 
 function processVoting(game) {
-    if (Object.keys(game.votes).length === 0) {
-        game.events.push('🗳️ Kimse oy kullanmadı.');
-        return;
-    }
-    
-    // Count votes
     const voteCounts = {};
+    
     Object.values(game.votes).forEach(target => {
         voteCounts[target] = (voteCounts[target] || 0) + 1;
     });
     
-    // Find max votes
-    const maxVotes = Math.max(...Object.values(voteCounts));
-    const topVoted = Object.keys(voteCounts).filter(t => voteCounts[t] === maxVotes);
+    let maxVotes = 0;
+    let executed = null;
     
-    if (topVoted.length === 1) {
-        const executed = topVoted[0];
-        const victim = game.players.find(p => p.name === executed);
-        if (victim) {
-            victim.alive = false;
-            game.events.push(`⚖️ ${executed} idam edildi! (Rol: ${getRoleInfo(victim.role).name})`);
+    Object.entries(voteCounts).forEach(([name, count]) => {
+        if (count > maxVotes) {
+            maxVotes = count;
+            executed = name;
+        }
+    });
+    
+    if (executed && maxVotes > 0) {
+        const player = game.players.find(p => p.name === executed);
+        if (player) {
+            player.alive = false;
+            showToast(`${executed} idam edildi! (${player.role})`, 'warning');
         }
     } else {
-        game.events.push('🗳️ Oylar eşit, kimse idam edilmedi.');
+        showToast('Kimse idam edilmedi', 'info');
     }
 }
 
 function checkWinCondition(game) {
-    const alive = game.players.filter(p => p.alive);
-    const killers = alive.filter(p => p.role === 'killer');
-    const villagers = alive.filter(p => p.role !== 'killer');
+    const aliveKillers = game.players.filter(p => p.alive && p.role === 'killer').length;
+    const aliveVillagers = game.players.filter(p => p.alive && p.role !== 'killer').length;
     
-    if (killers.length === 0) {
+    if (aliveKillers === 0) {
         return 'villagers';
     }
     
-    if (killers.length >= villagers.length) {
+    if (aliveKillers >= aliveVillagers) {
         return 'killers';
     }
     
@@ -1056,16 +1128,13 @@ function checkWinCondition(game) {
 }
 
 function endGame(winner) {
-    const lobbyData = getFromLocalStorage('lobby_' + lobbyCode);
-    if (!lobbyData || !lobbyData.game) return;
-    
-    lobbyData.status = 'ended';
-    saveToLocalStorage('lobby_' + lobbyCode, lobbyData);
-    
-    if (lobbyRefreshTimer) {
-        clearInterval(lobbyRefreshTimer);
-        lobbyRefreshTimer = null;
+    if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
     }
+    
+    const lobbyData = getFromLocalStorage(`lobby_${gameState.lobbyCode}`);
+    if (!lobbyData || !lobbyData.game) return;
     
     showGameEndScreen(winner, lobbyData.game.players);
 }
@@ -1073,35 +1142,40 @@ function endGame(winner) {
 function showGameEndScreen(winner, players) {
     showScreen('game-end-screen');
     
-    const winnerIcon = document.getElementById('winner-icon');
-    const winnerText = document.getElementById('winner-text');
+    const winnerText = winner === 'villagers' ? '👥 Köylüler Kazandı!' : '🔪 Katiller Kazandı!';
+    const subtitle = winner === 'villagers' ? 'Tüm katiller bulundu!' : 'Katiller köyü ele geçirdi!';
     
-    if (winner === 'villagers') {
-        winnerIcon.textContent = '🏆';
-        winnerText.textContent = 'Köylüler Kazandı!';
-    } else {
-        winnerIcon.textContent = '🔪';
-        winnerText.textContent = 'Katiller Kazandı!';
-    }
+    document.getElementById('winner-text').textContent = winnerText;
+    document.getElementById('winner-subtitle').textContent = subtitle;
     
-    // Show roles
     const rolesList = document.getElementById('roles-list');
     rolesList.innerHTML = '';
     
     players.forEach(player => {
-        const roleInfo = getRoleInfo(player.role);
         const item = document.createElement('div');
         item.className = 'role-reveal-item';
+        
+        const roleInfo = getRoleInfo(player.role);
+        
         item.innerHTML = `
-            <span class="role-reveal-name">${player.alive ? '✅' : '💀'} ${player.name}</span>
-            <span class="role-reveal-role">${roleInfo.icon} ${roleInfo.name}</span>
+            <span class="role-reveal-name">${player.name}</span>
+            <span class="role-reveal-role">${roleInfo.name}</span>
         `;
+        
         rolesList.appendChild(item);
     });
 }
 
-// ============ Init ============
+function showHowToPlay() {
+    showScreen('how-to-play-screen');
+}
+
+// Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
+    const savedChar = getFromLocalStorage('character');
+    if (savedChar) {
+        gameState.character = savedChar;
+    }
+    
     showMainMenu();
-    cleanupOldLobbies();
 });
